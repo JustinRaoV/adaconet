@@ -1,0 +1,84 @@
+\begin{thebibliography}{10}
+\expandafter\ifx\csname url\endcsname\relax
+  \def\url#1{\texttt{#1}}\fi
+\expandafter\ifx\csname urlprefix\endcsname\relax\def\urlprefix{URL }\fi
+\providecommand{\bibinfo}[2]{#2}
+\providecommand{\eprint}[2][]{\url{#2}}
+
+\bibitem{friedman2012}
+\bibinfo{author}{Friedman, J.} \& \bibinfo{author}{Alm, E.~J.}
+\newblock \bibinfo{title}{Inferring correlation networks from genomic survey
+  data}.
+\newblock \emph{\bibinfo{journal}{PLoS Computational Biology}}
+  \textbf{\bibinfo{volume}{8}}, \bibinfo{pages}{e1002687}
+  (\bibinfo{year}{2012}).
+
+\bibitem{kurtz2015}
+\bibinfo{author}{Kurtz, Z.~D.} \emph{et~al.}
+\newblock \bibinfo{title}{Sparse and compositionally robust inference of
+  microbial ecological networks}.
+\newblock \emph{\bibinfo{journal}{PLoS Computational Biology}}
+  \textbf{\bibinfo{volume}{11}}, \bibinfo{pages}{e1004226}
+  (\bibinfo{year}{2015}).
+
+\bibitem{lovell2015}
+\bibinfo{author}{Lovell, D.}, \bibinfo{author}{Pawlowsky-Gustafsson, V.},
+  \bibinfo{author}{Kok, J.} \& \bibinfo{author}{Huttley, G.}
+\newblock \bibinfo{title}{Proportionality: a valid alternative to correlation
+  for relative data}.
+\newblock \emph{\bibinfo{journal}{PLoS Computational Biology}}
+  \textbf{\bibinfo{volume}{11}}, \bibinfo{pages}{e1004075}
+  (\bibinfo{year}{2015}).
+
+\bibitem{lin2020}
+\bibinfo{author}{Lin, H.} \& \bibinfo{author}{Peddada, S.~D.}
+\newblock \bibinfo{title}{Analysis of microbial compositions: a review of
+  normalization and differential abundance analysis}.
+\newblock \emph{\bibinfo{journal}{npj Biofilms and Microbiomes}}
+  \textbf{\bibinfo{volume}{6}}, \bibinfo{pages}{60} (\bibinfo{year}{2020}).
+
+\bibitem{watts2019}
+\bibinfo{author}{Watts, S.~C.}, \bibinfo{author}{Ritchie, S.~C.},
+  \bibinfo{author}{Inouye, M.}, \bibinfo{author}{Holt, K.~E.} \&
+  \bibinfo{author}{Bulach, D.~M.}
+\newblock \bibinfo{title}{{FastSpar}: rapid and scalable correlation estimation
+  for compositional data}.
+\newblock \emph{\bibinfo{journal}{Bioinformatics}}
+  \textbf{\bibinfo{volume}{35}}, \bibinfo{pages}{1064--1066}
+  (\bibinfo{year}{2019}).
+
+\bibitem{liu2010}
+\bibinfo{author}{Liu, H.}, \bibinfo{author}{Roeder, K.} \&
+  \bibinfo{author}{Wasserman, L.}
+\newblock \bibinfo{title}{Stability approach to regularization selection
+  ({StARS}) for high dimensional graphical models}.
+\newblock In \emph{\bibinfo{booktitle}{Advances in Neural Information
+  Processing Systems}}, vol.~\bibinfo{volume}{23}, \bibinfo{pages}{1432--1440}
+  (\bibinfo{year}{2010}).
+
+\bibitem{sparsedossa2}
+\bibinfo{author}{Franzosa, E.~A.} \emph{et~al.}
+\newblock \bibinfo{title}{{SparseDOSSA2}: a statistical model for describing
+  and simulating microbial community profiles}.
+\newblock \emph{\bibinfo{journal}{bioRxiv}}  (\bibinfo{year}{2021}).
+
+\bibitem{lloydprice2017}
+\bibinfo{author}{Lloyd-Price, J.} \emph{et~al.}
+\newblock \bibinfo{title}{Strains, functions and dynamics in the expanded
+  {Human Microbiome Project}}.
+\newblock \emph{\bibinfo{journal}{Nature}} \textbf{\bibinfo{volume}{550}},
+  \bibinfo{pages}{61--66} (\bibinfo{year}{2017}).
+
+\bibitem{arumugam2011}
+\bibinfo{author}{Arumugam, M.} \emph{et~al.}
+\newblock \bibinfo{title}{Enterotypes of the human gut microbiome}.
+\newblock \emph{\bibinfo{journal}{Nature}} \textbf{\bibinfo{volume}{473}},
+  \bibinfo{pages}{174--180} (\bibinfo{year}{2011}).
+
+\bibitem{caporaso2011}
+\bibinfo{author}{Caporaso, J.~G.} \emph{et~al.}
+\newblock \bibinfo{title}{Moving pictures of the human microbiome}.
+\newblock \emph{\bibinfo{journal}{Genome Biology}}
+  \textbf{\bibinfo{volume}{12}}, \bibinfo{pages}{R50} (\bibinfo{year}{2011}).
+
+\end{thebibliography}

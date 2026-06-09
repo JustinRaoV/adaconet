@@ -1,0 +1,480 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-US">
+<head>
+<title>Qiita</title>
+<link rel="stylesheet" href="/static/vendor/css/jquery-ui.min.css" type="text/css">
+<link rel="stylesheet" href="/static/vendor/css/jquery-ui.structure.min.css" type="text/css">
+<link rel="stylesheet" href="/static/vendor/css/jquery-ui.theme.min.css" type="text/css">
+<link rel="stylesheet" href="/static/vendor/css/bootstrap.min.css" type="text/css">
+<link rel="stylesheet" href="/static/vendor/css/bootstrap-theme.min.css" type="text/css">
+<link rel="stylesheet" href="/static/vendor/css/bootstrap-toggle.min.css" type="text/css">
+<link rel="stylesheet" href="/static/vendor/css/chosen.css" type="text/css">
+<link rel="stylesheet" href="/static/vendor/css/jquery.dataTables.min.css" type="text/css">
+<link rel="stylesheet" href="/static/vendor/css/cytoscape.js/font-awesome.min.css" type="text/css">
+<link rel="stylesheet" href="/static/vendor/css/cytoscape.js/cytoscape.js-panzoom.css" type="text/css">
+<link rel="stylesheet" href="/static/vendor/css/cytoscape.js/tippy.js-4.0.1.css" />
+<link rel="stylesheet" href="/static/css/style.css" type="text/css">
+
+<script src="/static/vendor/js/jquery-3.6.0.min.js"></script>
+<script src="/static/vendor/js/jquery-ui.min.js"></script>
+<script src="/static/vendor/js/bootstrap.min.js"></script>
+<script src="/static/vendor/js/bootstrap-toggle.min.js"></script>
+<script src="/static/vendor/js/chosen.jquery.min.js"></script>
+<script src="/static/vendor/js/jquery.dataTables.min.js" type="text/javascript"></script>
+<script src="/static/vendor/js/jquery.dataTables.plugin.natural.js" type="text/javascript"></script>
+<script src="/static/vendor/js/vue.min.js"></script>
+<script src="/static/js/qiita.js"></script>
+<script type="text/javascript" src="/static/vendor/js/cytoscape.js/cytoscape.min.js"></script>
+<script type="text/javascript" src="/static/vendor/js/cytoscape.js/dagre.min.js"></script>
+<script type="text/javascript" src="/static/vendor/js/cytoscape.js/cytoscape-dagre.js"></script>
+<script type="text/javascript" src="/static/vendor/js/cytoscape.js/cytoscape-panzoom.js"></script>
+<script type="text/javascript" src="/static/vendor/js/cytoscape.js/popper.js"></script>
+<script type="text/javascript" src="/static/vendor/js/cytoscape.js/cytoscape-popper.min.js"></script>
+<script type="text/javascript" src="/static/vendor/js/cytoscape.js/tippy.js-4.0.1.min.js"></script>
+<script type="text/javascript" src="/static/vendor/js/platform.js"></script>
+<script type="text/javascript" src="/static/js/networkVue.js"></script>
+<script type="text/javascript" src="/static/js/sampleTemplateVue.js"></script>
+<link rel="shortcut icon" href="/static/img/favicon.ico">
+<script>
+var allowed_min_browser_versions = {
+'Chrome': {'version': 49, 'download': 'https://www.google.com/chrome/browser/'},
+'Firefox': {'version': 48, 'download': 'https://support.mozilla.org/en-US/kb/update-firefox-latest-version'},
+'Safari': {'version': 12, 'download': 'http://support.apple.com/en-us/HT6104'},
+'Chrome Mobile': {'version': 69, 'download': 'https://www.google.com/chrome/browser/'},
+}
+$(window).on('resize', function () {
+$('body').css('padding-top', $('#navigation-bar').height()+10);
+});
+$(window).on('load', function () {
+$('body').css('padding-top', $('#navigation-bar').height()+10);
+});
+function updateSelectedSamplesMenu (callback) {
+$.getJSON("/analysis/dflt/sumary/", function(result) {
+$("#dflt-study-count").text(result.studies);
+$("#dflt-pd-count").text(result.processed_data);
+$("#dflt-samp-count").text(result.samples);
+if (callback !== undefined) {
+callback();
+}
+});
+}
+/**
+*
+* Function to show the loading gif in a given div
+*
+* @param div_name string with the name of the div to populate with the loading gif
+*
+* This function replaces the content of the given div with the
+* gif to show that the section of page is loading
+*
+*/
+function show_loading(div_name, show_text = false) {
+var text = "<img src='/static/img/waiting.gif' style='display:block;margin-left: auto;margin-right: auto'/>";
+if (show_text) {
+text += '<br/><center><b>This task might take a long time (up to 5 minutes), please do not close this page.</center></b>';
+}
+$("#" + div_name).html(text);
+}
+function overlay_check() {
+var browser_name = platform.name;
+var browser_major_version = parseInt(platform.version.split("."));
+if (!(browser_name in allowed_min_browser_versions) ||
+browser_major_version < allowed_min_browser_versions[browser_name]['version']) {
+var browser_text = '';
+// adding valid browsers
+for (k in allowed_min_browser_versions) {
+browser_text += '<p id="explanation"><strong>' + k + ': ' +
+allowed_min_browser_versions[k]['version'] + '.</strong> <a target="_blank" href="' +
+allowed_min_browser_versions[k]['download'] + '">Download page</a></p>';
+}
+$('#overlay').append(browser_text);
+$('#overlay').css('visibility', 'visible');
+$('#navigation-bar').css('visibility', 'hidden');
+$('#jumbotron').css('visibility', 'hidden');
+}
+}
+$(document).ready(function() {
+$.getJSON("/analysis/dflt/sumary/", function(result) {
+if(parseInt(result.studies) > 0) {
+$('#dflt-sel-info').css('color', 'rgb(0, 160, 0)');
+}
+});
+// Load default analysis summary data when displayed in menu
+$("#dflt-sel-info").mouseover(function() {
+updateSelectedSamplesMenu();
+});
+$("#analysis-drop-down").mouseover(function() {
+$.getJSON("/analysis/dflt/sumary/", function(result){
+if(parseInt(result.studies) > 0){
+$("#selected_samples_menu").removeClass('disabled');
+$("#selected_samples_link").attr('href', '/analysis/selected/');
+}
+else{
+$("#selected_samples_menu").addClass('disabled');
+$("#selected_samples_link").attr('href', '#');
+}
+});
+});
+$('#qiita_download_accept').click(function(e){
+e.preventDefault();
+$('.qiita_pet_download_confirm').modal('hide');
+window.location.href = '/release/download/public';
+});
+// Based on http://codepen.io/willvincent/pen/LbeKKW
+// and https://datatables.net/examples/api/row_details.html
+Vue.component('data-table-processing-jobs', {
+template: '<table id="processing-jobs-datatables"></table>',
+props: ['jobs'],
+data() {
+return {
+headers: [
+{ "className": 'more-info-processing-jobs',
+"orderable": false,
+"data": null,
+"defaultContent": ''},
+{ title: 'Heartbeat' },
+{ title: 'Name' },
+{ title: 'Status' },
+{ title: 'Step' }
+],
+rows: [] ,
+dtHandle: null
+}
+},
+watch: {
+jobs(val, oldVal) {
+let vm = this;
+if (JSON.stringify(val) !== JSON.stringify(oldVal)) {
+vm.rows = [];
+val.forEach(function (item) {
+// Fish out the specific column data for each item in your data set and push it to the appropriate place.
+// Basically we're just building a multi-dimensional array here. If the data is _already_ in the right format you could
+// skip this loop...
+let row = [];
+row.push('')
+row.push(item.heartbeat);
+row.push(item.name);
+if (item.status == 'error') {
+item.status += '&nbsp;&nbsp;&nbsp;<a class="btn btn-danger btn-sm hide-job-from-procesing-jobs" id="' +
+item.id + '"><span class="glyphicon glyphicon-trash"></span></a>';
+}
+row.push(item.status);
+row.push(item.step);
+row.push(item.id);
+let params = "";
+for (k in item.params) {
+if (k.startsWith("qp-hide")) {
+continue;
+}
+params += '<b>' + k + '</b>: ' + item.params[k] + '<br/>';
+}
+row.push(params)
+row.push(item.processing_job_workflow_id)
+vm.rows.push(row);
+});
+// Here's the magic to keeping the DataTable in sync.
+// It must be cleared, new rows added, then redrawn!
+vm.dtHandle.clear();
+vm.dtHandle.rows.add(vm.rows);
+vm.dtHandle.draw();
+}
+}
+},
+mounted() {
+let vm = this;
+// Instantiate the datatable and store the reference to the instance in our dtHandle element.
+vm.dtHandle = $(this.$el).DataTable({
+// Specify whatever options you want, at a minimum these:
+columns: vm.headers,
+data: vm.rows,
+searching: false,
+paging: false,
+info: false,
+order: [[1, 'desc']]
+});
+$('#processing-jobs-datatables').on('click', 'td.more-info-processing-jobs', function () {
+var tr = $(this).closest('tr');
+var row = vm.dtHandle.row( tr );
+if ( row.child.isShown() ) {
+// This row is already open - close it
+row.child.hide();
+tr.removeClass('shown');
+}
+else {
+// Open this row
+row.child( format_extra_info_processing_jobs(row.data()) ).show();
+tr.addClass('shown');
+}
+});
+$('#processing-jobs-datatables').on('click', 'a.hide-job-from-procesing-jobs', function () {
+var jid = this.id;
+if (confirm('Are you sure you want to hide `' + jid + '`?')){
+$.ajax({
+url: '/study/process/job/',
+type: 'PATCH',
+data: {'op': 'remove', 'path': jid},
+success: function(data) {
+processing_jobs_vue.update_processing_job_data();
+},
+error: function(object, status, error_msg) {
+bootstrapAlert("Error while hiding `" + jid + "` artifact visibility: " + error_msg, "danger");
+}
+});
+}
+});
+}
+});
+// this has to be global so we can update when we click on the processing
+// jobs button
+processing_jobs_vue = new Vue({
+el: '#processing-jobs-table',
+data: {
+jobs: [],
+search: ''
+},
+computed: {
+filteredJobs() {
+let jobs = this.jobs;
+return this.$options.filters.filterBy(jobs, this.search);
+}
+},
+filters: {
+filterBy: function (list, value) {
+if (value === "") {
+return list
+}
+value = value.toLowerCase()
+return list.filter(function(item) {
+for (var k in item) {
+if (item[k] != null && item[k].toString().toLowerCase().indexOf(value) > -1) {
+return true
+}
+}
+return false;
+});
+}
+},
+methods: {
+update_processing_job_data: function () {
+let vm = this;
+$.ajax({
+url: "/user/jobs/",
+success(response) {
+if (typeof response.jobs === 'undefined' || response.status !== 'success') {
+vm.jobs = []
+} else {
+vm.jobs = response.jobs;
+}
+}
+});
+}
+},
+mounted() {
+let vm = this;
+setInterval(function (){
+// if modal is shown, https://stackoverflow.com/a/3282893
+if (($('#qiita-processing').data('bs.modal') || {}).isShown){
+vm.update_processing_job_data();
+}
+}, 30000);
+}
+});
+$('#qiita-processing').on('shown.bs.modal', processing_jobs_vue.update_processing_job_data);
+});
+</script>
+
+</head>
+<body style="padding-top: 70px; height: 100%" onload='overlay_check();'>
+<div id="qiita-main" class="qiita-main">
+<div id="navigation-bar" class="navbar navbar-default navbar-inverse navbar-fixed-top">
+<div class="container-fluid">
+<div class="navbar-header">
+<!-- button that appears if the window is re-sized to a smaller size -->
+<button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+<span class="sr-only">Toggle navigation</span>
+<span class="icon-bar"></span>
+<span class="icon-bar"></span>
+<span class="icon-bar"></span>
+</button>
+</div>
+<div class="navbar-collapse collapse">
+<ul class="nav navbar-nav">
+<li>
+<!-- qiita logo -->
+<a class="navbar-brand" rel="home" href="/" title="Qiita">
+<img style="max-width:100px; margin-top: -7px;" src="/static/img/logo-clear.png">
+</a>
+</li>
+<!-- analysis menu -->
+
+</ul>
+<!-- show user name and logout button if there's a user logged in -->
+
+<form action="/auth/create/" class="navbar-form navbar-right">
+<a class="btn btn-primary" href="/auth/forgot/"> Reset Password </a>
+<input type="submit" value="Sign up" class="btn btn-info">
+</form>
+<form class="navbar-form navbar-right" role="form" action="/auth/login/" method="post">
+<div class="form-group">
+<input tabindex="1" type="text" id="username" name="username" placeholder="Email" class="form-control">
+</div>
+<div class="form-group">
+<input tabindex="2" type="password" id="password" name="password" placeholder="Password" class="form-control">
+</div>
+<button tabindex="3" type="submit" class="btn btn-success">Sign in</button>
+</form>
+
+<ul class="nav navbar-nav">
+<li>
+<a href="/redbiom/">redbiom</a>
+</li>
+</ul>
+<ul class="nav navbar-nav">
+<!-- downloads -->
+<li class="dropdown">
+<a href="#" data-toggle="dropdown" class="dropdown-toggle">Help<b class="caret"></b></a>
+<ul class="dropdown-menu">
+<li>
+<a href="http://cmi-workshop.readthedocs.io/en/latest/">Tutorial</a>
+</li>
+<li>
+<a href="/static/doc/html/index.html">Help</a>
+</li>
+</ul>
+</li>
+</ul>
+<ul class="nav navbar-nav">
+<!-- generic elements -->
+<li class="dropdown">
+<a href="#" data-toggle="dropdown" class="dropdown-toggle">Software<b class="caret"></b></a>
+<ul class="dropdown-menu">
+<li>
+<a href="/software/">Available Software</a>
+</li>
+<li>
+<a href="/workflows/">Recommended Workflows</a>
+</li>
+</ul>
+</li>
+</ul>
+<ul class="nav navbar-nav">
+<!-- generic elements -->
+<li class="dropdown">
+<a href="#" data-toggle="dropdown" class="dropdown-toggle">More Info<b class="caret"></b></a>
+<ul class="dropdown-menu">
+<li>
+<a href="/stats/">Stats</a>
+</li>
+<li>
+<a href="http://github.com/biocore/qiita">GitHub</a>
+</li>
+<li>
+<a href="https://github.com/biocore/qiita/blob/master/README.rst#current-features">Current and Future Features</a>
+</li>
+<li role="separator" class="divider"></li>
+<li>
+<a type="button" data-toggle="modal" data-target=".qiita_pet_download_confirm">
+Download public BIOM and metadata files
+<small>
+<br/><b>MD5:</b> e1726b7e2f115b68abe54e518c78b908
+<br/><b>Last update:</b> 06-07-26 01:00:08
+</small>
+</a>
+</li>
+<li role="separator" class="divider"></li>
+<li>
+<a type="button" href="/release/download/archive">
+BETA: Download Archive files (for example, deblur trees)
+<small>
+<br/><b>MD5:</b> 
+<br/><b>Last update:</b> 
+</small>
+</a>
+</li>
+<li role="separator" class="divider"></li>
+<li>
+<a href="https://github.com/qiita-spots/qiita/releases">
+<h6>
+<b>Current version:</b></br>
+2026.01 e0e7480
+</h6>
+</a>
+</li>
+</ul>
+</li>
+</ul>
+</div> <!--/.navbar-collapse -->
+</div>
+</div> <!--/.main nav-bar -->
+<div class="modal fade qiita_pet_download_confirm" tabindex="-1" role="dialog" aria-labelledby="Confirm download">
+<div class="modal-dialog modal-lg" role="document">
+<div class="modal-content">
+<div class="modal-header">
+<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+<h4 class="modal-title">File really big.</h4>
+</div>
+<div class="modal-body">
+<p>The file you're trying to download is really big. Would you like to proceed?</p>
+</div>
+<div class="modal-footer">
+<button type="button" class="btn btn-danger" data-dismiss="modal">No</button>
+<button type="button" class="btn btn-success" id="qiita_download_accept">Yes</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- all templates should override this portion to present their main content -->
+<div id="template-content" class="container-fluid" style="width:97%">
+
+<h1>404: Page not found!</h1>
+
+</div>
+</div> <!--/.main nav-bar -->
+<div id="footer" style="font-size: 12px; text-align: center; z-index: 1000;">
+Thank you for using Qiita. <a target="_blank" href="/static/doc/html/faq.html#how-to-cite-qiita">Citing Qiita?</a>.
+<br/>
+Questions? <a href="mailto:qiita.help@gmail.com">qiita.help@gmail.com</a>; don't forget to add your study or analysis id.
+<br/>
+Read our <a href="/iframe/?iframe=qiita-terms">terms and conditions</a>.
+</div>
+<div id="overlay" class="navbar-brand" style="visibility: hidden; position: absolute; left: 0px; top: 0px; width: 100%; height: 100%; font-size: 13px; text-align: center; z-index: 1000; background-color: #333333; color: #FFFFFF;">
+<img src="/static/img/logo-clear.png" alt="Qiita logo" id="small-logo"/>
+<h1>This site only works with the following browsers</h1>
+</div>
+</div>
+<!-- the jobs list is shown as a modal view -->
+<div id="qiita-processing" class="modal fade" role="dialog">
+<div class="modal-dialog">
+<div class="modal-content">
+<div class="modal-header">
+<button type="button" class="close" data-dismiss="modal">&times;</button>
+<h4 class="modal-title">Active Jobs</h4>
+<h6 class="modal-title">succesful jobs are not shown</h6>
+</div>
+<div id='processing-jobs-table' class="modal-body">
+Search: <input v-model="search">
+<hr>
+<data-table-processing-jobs :jobs="filteredJobs"></data-table-processing-jobs>
+</div>
+<div class="modal-footer">
+<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+</div>
+</div>
+</div>
+</div>
+</body>
+</html>

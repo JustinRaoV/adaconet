@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+.venv/
+venv/
+
+# Data files (too large for GitHub)
+data/simulated/sparsedossa2/*.csv
+data/public/*.csv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Results (too large for GitHub free tier)
+results/*.json
+results/figures/*.tiff
+
+# Logs
+*.log
