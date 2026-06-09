@@ -1,5 +1,0 @@
-抱歉，您要访问的网站不在安全策略默认允许的范围内。如果希望进一步访问，请打开“云壳-防护记录-域名拦截”，点击域名右侧的按钮，申请加白或报备后访问。
-若有问题或有其他需求，请加群：办公安全问题反馈群(23149125)
-
-Sorry, the website you want to visit is not allowed by the default security policy. If you want to visit it further, please open ‘Cloud Shell - Protection Records - Domain Blocking’, click the button on the right side of the domain name, and apply for non-approval plus white or report access.
-If you have any questions or other needs, please join the group: Office Security Feedback Group (23149125).
