@@ -51,7 +51,7 @@
 \accepted{Date}{0}{Year}
 
 \abstract{\textbf{Motivation:} Microbial co-occurrence networks inferred from compositional sequencing data are sensitive to the choice of statistical methodology, yet no single approach consistently outperforms alternatives across diverse data-generating mechanisms. Ensemble methods combine multiple estimators but lack theoretical justification for why and when specific layers should be included or excluded.
-\textbf{Results:} We present AdaCoNet, a four-layer ensemble framework with a principled theoretical foundation. We introduce the Compositional Copula Model (CCM), a unified generative model under which each existing layer is a different estimator of the latent correlation matrix. We prove a Phase Transition Theorem showing that the Spearman-on-CLR estimator undergoes a sharp reliability transition at a critical Dirichlet--Multinomial concentration threshold $\alpha_0/p = c^*$, above which the CLR variance inflation factor $(1 + p/|\alpha|)$ is small and rank-based methods are efficient, and below which CLR-induced noise dominates. This theorem yields theory-driven ensemble weights $w_k \propto 1/\text{MSE}_k$ that automatically adapt to the data-generating regime without empirical tuning. Benchmarked against eight competing methods across two simulation frameworks ($N$ up to 1000, $P$ up to 1000, 3 seeds per configuration), AdaCoNet achieves the highest AUROC (up to 0.94) on direct-covariance data and 0.71 on SparseDOSSA2 Gaussian copula data (second only to standalone proportionality at 0.90), while being 4--184$\times$ faster than SparCC and comparable in speed to REBACCA (a closed-form competitor that runs in $<$0.01\,s). An ablation study validates the theoretical predictions: fixed ensembles lose up to 0.034 AUROC compared to the theory-adaptive version. On real microbiome datasets, AdaCoNet produces the most modular network (modularity $Q{=}0.510$) in under one second.
+\textbf{Results:} We present AdaCoNet, a four-layer ensemble framework with a principled theoretical foundation. We introduce the Compositional Copula Model (CCM), a unified generative model under which each existing layer is a different estimator of the latent correlation matrix. We prove a Phase Transition Theorem showing that the Spearman-on-CLR estimator undergoes a sharp reliability transition at a critical Dirichlet--Multinomial concentration threshold $\alpha_0/p = c^*$, above which the CLR variance inflation factor $(1 + p/|\alpha|)$ is small and rank-based methods are efficient, and below which CLR-induced noise dominates. This theorem yields theory-driven ensemble weights $w_k \propto 1/\text{MSE}_k$ that automatically adapt to the data-generating regime without empirical tuning. Benchmarked against eight competing methods across two simulation frameworks ($N$ up to 1000, $P$ up to 1000, 10 seeds per configuration), AdaCoNet achieves the highest AUROC (up to 0.94) on direct-covariance data and 0.71 on SparseDOSSA2 Gaussian copula data (second only to standalone proportionality at 0.90), while being 5--85$\times$ faster than SparCC and comparable in speed to REBACCA (a closed-form competitor that runs in $<$0.01\,s). An ablation study validates the theoretical predictions: fixed ensembles lose up to 0.034 AUROC compared to the theory-adaptive version. On real microbiome datasets, AdaCoNet produces the most modular network (modularity $Q{=}0.510$) in under one second.
 \textbf{Availability:} Source code and benchmark scripts are available at \url{https://github.com/JustinRaoV/adaconet}.
 \textbf{Contact:} \href{mailto:raojun@fudan.edu.cn}{raojun@fudan.edu.cn}}
 
@@ -169,7 +169,7 @@ AdaCoNet comprises four layers (Fig.~\ref{fig:arch}), each targeting a different
 \end{figure}
 
 \begin{table}[!t]
-\caption{AUROC and AUPRC on v4 direct-covariance simulator (mean $\pm$ std, 3 seeds)}\label{tab:v4}
+\caption{AUROC and AUPRC on v4 direct-covariance simulator (mean $\pm$ std, 10 seeds)}\label{tab:v4}
 \centering
 \small
 \setlength{\tabcolsep}{3pt}
@@ -178,33 +178,33 @@ AdaCoNet comprises four layers (Fig.~\ref{fig:arch}), each targeting a different
 \textbf{Method} & \textbf{N200,P50} & \textbf{N500,P200} & \textbf{N500,P500} & \textbf{N1k,P500} & \textbf{N1k,P1k} \\
 \midrule
 \multicolumn{6}{l}{\textit{AUROC}} \\
-\textbf{AdaCoNet}    & $\mathbf{0.919 \pm 0.014}$ & $\mathbf{0.909 \pm 0.003}$ & $\mathbf{0.723 \pm 0.125}$ & $0.779 \pm 0.154$       & $0.726 \pm 0.043$ \\
-SparCC               & $0.855 \pm 0.031$          & $0.866 \pm 0.016$          & $0.715 \pm 0.101$       & $0.778 \pm 0.140$       & --- \\
-REBACCA              & $0.856 \pm 0.025$          & $0.865 \pm 0.017$          & $0.704 \pm 0.099$       & $0.772 \pm 0.136$       & $\mathbf{0.731 \pm 0.040}$ \\
-FastSpar             & $0.828 \pm 0.032$          & $0.873 \pm 0.016$          & $0.716 \pm 0.103$       & $\mathbf{0.779 \pm 0.139}$ & --- \\
-CCLasso              & $0.789 \pm 0.014$          & $0.827 \pm 0.012$          & $0.683 \pm 0.093$       & $0.738 \pm 0.127$       & --- \\
-Spearman CLR         & $0.764 \pm 0.047$          & $0.836 \pm 0.054$          & $0.515 \pm 0.015$       & $0.512 \pm 0.021$       & $0.500 \pm 0.008$ \\
-Proportionality      & $0.552 \pm 0.064$          & $0.567 \pm 0.015$          & $0.532 \pm 0.030$       & $0.540 \pm 0.041$       & $0.537 \pm 0.022$ \\
-SPIEC-EASI           & $0.531 \pm 0.023$          & $0.535 \pm 0.005$          & $0.527 \pm 0.004$       & $0.546 \pm 0.002$       & $0.559 \pm 0.020$ \\
-Graphical Lasso      & $0.506 \pm 0.043$          & $0.500 \pm 0.000$          & $0.500 \pm 0.000$       & $0.500 \pm 0.000$       & $0.500 \pm 0.000$ \\
+\textbf{AdaCoNet}    & $\mathbf{0.919 \pm 0.012}$ & $\mathbf{0.896 \pm 0.048}$ & $\mathbf{0.742 \pm 0.094}$ & $\mathbf{0.811 \pm 0.114}$ & $0.729 \pm 0.037$ \\
+SparCC               & $0.824 \pm 0.057$          & $0.864 \pm 0.027$          & $0.731 \pm 0.073$       & $0.808 \pm 0.098$       & --- \\
+REBACCA              & $0.840 \pm 0.047$          & $0.862 \pm 0.028$          & $0.719 \pm 0.072$       & $0.798 \pm 0.096$       & $\mathbf{0.739 \pm 0.030}$ \\
+FastSpar             & $0.819 \pm 0.055$          & $\mathbf{0.866 \pm 0.028}$ & $0.732 \pm 0.074$       & $0.809 \pm 0.097$       & --- \\
+CCLasso              & $0.782 \pm 0.042$          & $0.814 \pm 0.031$          & $0.698 \pm 0.069$       & $0.759 \pm 0.091$       & --- \\
+Spearman CLR         & $0.728 \pm 0.079$          & $0.803 \pm 0.113$          & $0.536 \pm 0.028$       & $0.538 \pm 0.031$       & $0.499 \pm 0.005$ \\
+Proportionality      & $0.532 \pm 0.053$          & $0.560 \pm 0.026$          & $0.522 \pm 0.026$       & $0.531 \pm 0.043$       & $0.536 \pm 0.019$ \\
+SPIEC-EASI           & $0.529 \pm 0.034$          & $0.538 \pm 0.015$          & $0.530 \pm 0.008$       & $0.551 \pm 0.010$       & $0.557 \pm 0.018$ \\
+Graphical Lasso      & $0.548 \pm 0.093$          & $0.500 \pm 0.000$          & $0.500 \pm 0.000$       & $0.500 \pm 0.000$       & $0.500 \pm 0.000$ \\
 \midrule
 \multicolumn{6}{l}{\textit{AUPRC}} \\
-\textbf{AdaCoNet}    & $\mathbf{0.750 \pm 0.030}$ & $\mathbf{0.722 \pm 0.014}$ & $\mathbf{0.363 \pm 0.165}$ & $0.480 \pm 0.239$       & $\mathbf{0.339 \pm 0.064}$ \\
-SparCC               & $0.585 \pm 0.099$          & $0.628 \pm 0.031$          & $0.337 \pm 0.145$       & $0.476 \pm 0.239$       & --- \\
-REBACCA              & $0.629 \pm 0.039$          & $0.633 \pm 0.031$          & $0.322 \pm 0.138$       & $\mathbf{0.465 \pm 0.231}$ & $0.345 \pm 0.067$ \\
-FastSpar             & $0.550 \pm 0.058$          & $0.644 \pm 0.035$          & $0.339 \pm 0.150$       & $0.479 \pm 0.240$       & --- \\
-CCLasso              & $0.463 \pm 0.015$          & $0.526 \pm 0.027$          & $0.286 \pm 0.117$       & $0.392 \pm 0.190$       & --- \\
+\textbf{AdaCoNet}    & $\mathbf{0.737 \pm 0.034}$ & $\mathbf{0.688 \pm 0.111}$ & $\mathbf{0.374 \pm 0.136}$ & $\mathbf{0.517 \pm 0.195}$ & $\mathbf{0.344 \pm 0.052}$ \\
+SparCC               & $0.500 \pm 0.132$          & $0.620 \pm 0.063$          & $0.347 \pm 0.109$       & $0.508 \pm 0.179$       & --- \\
+REBACCA              & $0.578 \pm 0.106$          & $0.620 \pm 0.070$          & $0.332 \pm 0.106$       & $0.492 \pm 0.173$       & $0.357 \pm 0.050$ \\
+FastSpar             & $0.505 \pm 0.125$          & $0.626 \pm 0.073$          & $0.348 \pm 0.114$       & $0.508 \pm 0.181$       & --- \\
+CCLasso              & $0.443 \pm 0.091$          & $0.496 \pm 0.065$          & $0.293 \pm 0.091$       & $0.405 \pm 0.145$       & --- \\
 \botrule
 \end{tabular}
 \begin{tablenotes}
 \small
-Theory-driven weights ($w_S = \alpha_0/(\alpha_0 + c_{\text{ref}})$) achieve consistent improvement over equal-weight ensembles across all configurations. AdaCoNet dominates at $P \leq 500$, and is competitive at $P{=}1000$ (REBACCA $0.731 \pm 0.040$). The zero-fraction guard ($f_0 > 0.5$) correctly downweights Spearman on seeds with anomalous zero inflation (e.g., seed~1 at $N{=}500, P{=}500$: $f_0 = 0.58$, $w_S = 0.17$). SparCC, FastSpar, and CCLasso excluded at $P{=}1000$ due to computational cost. Values are mean $\pm$ std across 3 seeds.
+Theory-driven weights ($w_S = \alpha_0/(\alpha_0 + c_{\text{ref}})$) achieve consistent improvement over equal-weight ensembles across all configurations. AdaCoNet dominates at $P \leq 500$ and is competitive at $P{=}1000$ (REBACCA $0.739 \pm 0.030$). The zero-fraction guard ($f_0 > 0.5$) correctly downweights Spearman on seeds with anomalous zero inflation (e.g., seed~1 at $N{=}500, P{=}500$: $f_0 = 0.58$, $w_S = 0.17$). SparCC, FastSpar, and CCLasso excluded at $P{=}1000$ due to computational cost. Values are mean $\pm$ std across 10 seeds.
 \end{tablenotes}
 \end{table}
 
-We evaluated nine methods using a direct-covariance-embedding simulator (edge density 10\%, $\rho \in [0.3, 0.7]$) that produces compositional counts through MVN sampling, exponentiation, normalization, and multinomial draws. Each configuration was run with 3 random seeds.
+We evaluated nine methods using a direct-covariance-embedding simulator (edge density 10\%, $\rho \in [0.3, 0.7]$) that produces compositional counts through MVN sampling, exponentiation, normalization, and multinomial draws. Each configuration was run with 10 random seeds.
 
-AdaCoNet achieved the highest AUROC across all v4 configurations (Fig.~\ref{fig:v4bench}, Table~\ref{tab:v4}). Theory-driven weights ($w_S = \alpha_0/(\alpha_0 + c_{\text{ref}})$) improved performance by $+0.02$--$+0.04$ over equal-weight ensembles: at $N{=}200, P{=}50$, AdaCoNet reached 0.919/0.750 (AUROC/AUPRC), substantially outperforming SparCC (0.855/0.585) and REBACCA (0.856/0.629). At $N{=}500, P{=}200$, AdaCoNet again led with 0.909/0.722. At larger scales ($N{=}500, P{=}500$), AdaCoNet (0.723) surpassed SparCC (0.715) and REBACCA (0.704), while being 103$\times$ faster (1.2\,s vs 121\,s). At $N{=}1000, P{=}500$, AdaCoNet (0.779) matched FastSpar (0.779) and slightly led SparCC (0.778). At $N{=}1000, P{=}1000$, REBACCA (0.731) slightly outperformed AdaCoNet (0.726) among computationally feasible methods. The $|\alpha|/p$ values ranged from 0.03 to 0.86 across v4 configurations and seeds, placing most above the phase transition threshold $c^*$. Theory-driven weights assigned Spearman $w_S \in [0.16, 0.32]$, with copula receiving complementary weight $(1 - w_S)$. The zero-fraction guard correctly downweighted Spearman on seeds with anomalous zero inflation (e.g., seed~1 at $N{=}500, P{=}500$: $f_0 = 0.58$, $w_S = 0.17$).
+AdaCoNet achieved the highest AUROC across all v4 configurations (Fig.~\ref{fig:v4bench}, Table~\ref{tab:v4}). Theory-driven weights ($w_S = \alpha_0/(\alpha_0 + c_{\text{ref}})$) improved performance by $+0.02$--$+0.04$ over equal-weight ensembles: at $N{=}200, P{=}50$, AdaCoNet reached 0.919/0.737 (AUROC/AUPRC), substantially outperforming SparCC (0.824/0.500) and REBACCA (0.840/0.578). At $N{=}500, P{=}200$, AdaCoNet again led with 0.896/0.688. At larger scales ($N{=}500, P{=}500$), AdaCoNet (0.742) surpassed SparCC (0.731) and REBACCA (0.719), while being 85$\times$ faster (1.0\,s vs 88\,s). At $N{=}1000, P{=}500$, AdaCoNet (0.811) slightly led SparCC (0.808) and FastSpar (0.809). At $N{=}1000, P{=}1000$, REBACCA (0.739) slightly outperformed AdaCoNet (0.729) among computationally feasible methods. The $|\alpha|/p$ values ranged from 0.03 to 0.86 across v4 configurations and seeds, placing most above the phase transition threshold $c^*$. Theory-driven weights assigned Spearman $w_S \in [0.16, 0.32]$, with copula receiving complementary weight $(1 - w_S)$. The zero-fraction guard correctly downweighted Spearman on seeds with anomalous zero inflation (e.g., seed~1 at $N{=}500, P{=}500$: $f_0 = 0.58$, $w_S = 0.17$).
 
 Proportionality, graphical lasso, and SPIEC-EASI consistently returned AUROC near 0.50, indicating poor match to the direct-covariance mechanism.
 
@@ -260,23 +260,23 @@ This confirms the CCM's prediction that different data-generating regimes demand
 \toprule
 \textbf{Variant} & \textbf{v4 N200,P50} & \textbf{v4 N500,P500} & \textbf{SD2 N500} \\
 \midrule
-Full adaptive       & 0.919                & 0.723                & 0.714             \\
-Fixed 4-layer       & 0.876                & 0.712                & 0.680             \\
+Full adaptive       & 0.919                & 0.742                & 0.714             \\
+Fixed 4-layer       & 0.885                & 0.724                & 0.680             \\
 \midrule
---- w/o DM           & 0.903                & 0.717                & 0.678             \\
---- w/o Spearman     & 0.740                & 0.668                & 0.716             \\
---- w/o Prop.        & 0.786                & 0.668                & 0.671             \\
---- w/o Copula       & 0.923                & 0.738                & 0.649             \\
+--- w/o DM           & 0.906                & 0.734                & 0.678             \\
+--- w/o Spearman     & 0.741                & 0.666                & 0.716             \\
+--- w/o Prop.        & 0.808                & 0.666                & 0.671             \\
+--- w/o Copula       & 0.923                & 0.754                & 0.649             \\
 \midrule
-DM only              & 0.653                & 0.627                & 0.659             \\
-Spearman only        & 0.950                & 0.734                & 0.619             \\
-Prop. only           & 0.855                & 0.731                & 0.691             \\
-Copula only          & 0.516                & 0.516                & 0.721             \\
+DM only              & 0.653                & 0.607                & 0.659             \\
+Spearman only        & 0.952                & 0.753                & 0.619             \\
+Prop. only           & 0.832                & 0.749                & 0.691             \\
+Copula only          & 0.554                & 0.518                & 0.721             \\
 \botrule
 \end{tabular}
 \begin{tablenotes}
 \small
-Full adaptive = AdaCoNet with theory-driven weights (Theorem~3); Fixed 4-layer = equal-weight ensemble; ``--- w/o'' = leave-one-out. On SD2, the fixed 4-layer ensemble drops from 0.714 to 0.680 (---0.034), confirming that theory-driven downweighting of Spearman in the high-zero-fraction regime is beneficial. On v4, the adaptive ensemble outperforms the fixed 4-layer baseline by $+0.011$ to $+0.043$.
+Full adaptive = AdaCoNet with theory-driven weights (Theorem~3); Fixed 4-layer = equal-weight ensemble; ``--- w/o'' = leave-one-out. On SD2, the fixed 4-layer ensemble drops from 0.714 to 0.680 (---0.034), confirming that theory-driven downweighting of Spearman in the high-zero-fraction regime is beneficial. On v4, the adaptive ensemble outperforms the fixed 4-layer baseline by $+0.018$ to $+0.034$. Values are from 10-seed experiments.
 \end{tablenotes}
 \end{table}
 
@@ -297,7 +297,7 @@ The cross-simulator inversion in ablation patterns---Spearman dominant on v4, Co
 \caption{\textbf{Speed--accuracy Pareto front.} AdaCoNet (blue) occupies the top-left region on both simulators. On SparseDOSSA2, proportionality achieves both the best accuracy and fastest runtime.}\label{fig:pareto}
 \end{figure}
 
-AdaCoNet completes in under 7 seconds at $P{=}1000$, while SparCC requires 63--121\,s at $P{=}500$ due to repeated lsq\_linear solves. REBACCA achieves near-instantaneous computation ($<$0.01\,s) through its closed-form Sherman--Morrison solution (Fig.~\ref{fig:pareto}). At $P{=}1000$, SparCC, FastSpar, and CCLasso were excluded from benchmarking due to prohibitive computational cost.
+AdaCoNet completes in under 6 seconds at $P{=}1000$, while SparCC requires 88--112\,s at $P{=}500$ due to repeated lsq\_linear solves. REBACCA achieves near-instantaneous computation ($<$0.01\,s) through its closed-form Sherman--Morrison solution (Fig.~\ref{fig:pareto}). At $P{=}1000$, SparCC, FastSpar, and CCLasso were excluded from benchmarking due to prohibitive computational cost.
 
 \subsection{Real data applications}\label{ssec:real}
 
@@ -393,13 +393,17 @@ The cross-simulator comparison (Fig.~\ref{fig:crosssim}) reveals a fundamental i
 
 Among the newly benchmarked methods, REBACCA emerged as a notable performer, achieving competitive AUROC at negligible computational cost ($<$0.01\,s) through its closed-form Sherman--Morrison solution. At $P \leq 500$, REBACCA's accuracy is within one standard error of AdaCoNet, making it a strong baseline for large-scale screening where computational budget is the primary constraint.
 
+Several recent methods that were not directly benchmarked here deserve discussion. gCoda \cite{fang2017} extends the SparCC framework with a compositionally robust graphical lasso that jointly estimates the precision matrix and correlation structure, potentially offering improved edge specificity at the cost of higher computational complexity. SparXCC \cite{jensen2024} generalizes SparCC to cross-domain correlation estimation (e.g., taxon--metabolite pairs), an important extension for multi-omics integration that our current framework does not address. FlashWeave \cite{tackmann2019} employs a fast conditional mutual information framework with heuristic network integration, designed for large-scale heterogeneous datasets with thousands of samples. CoNI \cite{klaus2022} performs correlation-guided network integration by combining multiple correlation measures through a machine-learning framework. These methods are primarily available as R packages, while our benchmark infrastructure is implemented in Python; direct computational comparison would require a unified cross-language benchmark that we plan to include in future work. Nonetheless, the CCM framework provides a theoretical lens through which to view these methods: gCoda and SparXCC can be seen as alternative estimators of $\Sigma$ under the compositional model, while FlashWeave and CoNI operate on fundamentally different principles (information-theoretic and ML-based, respectively) that are not directly captured by the CCM generative framework.
+
 The low modularity of AdaCoNet on MovingPictures ($Q{=}0.163$ vs proportionality at $Q{=}0.438$) warrants further analysis. On this longitudinal dataset ($N{=}1967$, $P{=}926$), the high sample size places the data firmly in the $N \gg P$ regime where Bayesian CLR is used. The theory-driven weights assign substantial weight to Spearman-on-CLR ($w_S \approx 0.3$), but the MovingPictures cohort captures continuous temporal dynamics better described by ratio-preservation than by rank correlation. Proportionality, which directly measures constant-ratio preservation, naturally captures the temporal modules where taxa co-vary in lockstep across time points. AdaCoNet's ensemble, by mixing Spearman (which captures monotone but non-proportional associations) with proportionality, produces a more diffuse community structure. This suggests that for temporal or longitudinal datasets, a modified weight scheme that upweights proportionality could improve modularity---an extension the CCM framework naturally accommodates.
 
-Several limitations merit discussion. (i)~The v4 simulator, while controlled, generates data through multinomial draws from a Dirichlet prior---the same distributional family assumed by the DM layer. This creates a potential self-favouring bias: AdaCoNet's DM posterior correlation is effectively the Bayes estimator under the true generative model, inflating its apparent advantage. SparseDOSSA2, which uses a fundamentally different truncated log-normal copula mechanism, provides an independent counterpoint; AdaCoNet remains competitive on SD2 but no longer dominates, as expected when the DM prior assumption is violated. (ii)~The CCM currently assumes a single Dirichlet--Multinomial distribution per sample, not accounting for sub-community structure that could arise from distinct ecological niches within a single sample. (iii)~The copula layer captures only linear associations in normal-score space; nonlinear extensions (e.g., distance correlation, kernel methods) could capture more complex dependencies. (iv)~The Phase Transition Theorem provides asymptotic bounds, and finite-sample corrections may improve the threshold $c^*$. (v)~At $P{=}1000$, the adaptive mechanism yields $\alpha_0/p \approx 0.03$--$0.04$ across all seeds, below $c_{\text{ref}}$. This occurs because the DM total concentration $|\alpha|$ grows sublinearly with $p$ in practice: as dimensionality increases, the per-taxon signal weakens and the DM fit assigns lower concentration to each taxon. Consequently, the theory weights effectively exclude Spearman and the remaining 3-layer ensemble (DM + Prop + Copula) underperforms REBACCA (0.726 vs 0.731), suggesting that high-dimensional regimes require improved copula estimators or alternative weighting strategies.
+Several limitations merit discussion. (i)~The v4 simulator, while controlled, generates data through multinomial draws from a Dirichlet prior---the same distributional family assumed by the DM layer. This creates a potential self-favouring bias: AdaCoNet's DM posterior correlation is effectively the Bayes estimator under the true generative model, inflating its apparent advantage. SparseDOSSA2, which uses a fundamentally different truncated log-normal copula mechanism, provides an independent counterpoint; AdaCoNet remains competitive on SD2 but no longer dominates, as expected when the DM prior assumption is violated. (ii)~The CCM currently assumes a single Dirichlet--Multinomial distribution per sample, not accounting for sub-community structure that could arise from distinct ecological niches within a single sample. (iii)~The copula layer captures only linear associations in normal-score space; nonlinear extensions (e.g., distance correlation, kernel methods) could capture more complex dependencies. (iv)~The Phase Transition Theorem provides asymptotic bounds, and finite-sample corrections may improve the threshold $c^*$. (v)~At $P{=}1000$, the adaptive mechanism yields $\alpha_0/p \approx 0.03$--$0.04$ across all seeds, below $c_{\text{ref}}$. This occurs because the DM total concentration $|\alpha|$ grows sublinearly with $p$ in practice: as dimensionality increases, the per-taxon signal weakens and the DM fit assigns lower concentration to each taxon. Consequently, the theory weights effectively exclude Spearman and the remaining 3-layer ensemble (DM + Prop + Copula) underperforms REBACCA (0.729 vs 0.739), suggesting that high-dimensional regimes require improved copula estimators or alternative weighting strategies.
 
 A sensitivity analysis of the threshold $c_{\text{ref}}$ confirms that our results are robust to its exact value. On v4 data ($N{=}500, P{=}500$, $\alpha_0/p = 0.125$), Spearman is correctly included for all $c_{\text{ref}} \in [0.01, 0.12]$, and excluded only when $c_{\text{ref}} \geq 0.13$, yielding a wide robustness plateau of 0.11 units. On SparseDOSSA2 ($\alpha_0/p = 0.066$, $f_0 = 0.66$), the zero-fraction guard alone excludes Spearman regardless of $c_{\text{ref}}$, demonstrating that the dual diagnostic mechanism is redundant-safe: even if $c_{\text{ref}}$ were misspecified, the $f_0$ guard would still produce the correct layer selection. These results (Supplementary Fig.~S1) indicate that $c_{\text{ref}} = 0.05$ is not a knife-edge threshold but sits well within the robust plateau for both data regimes.
 
 Future directions include nonlinear copula extensions, cross-validated weight learning, and rigorous finite-sample analysis of the phase transition boundary.
+
+We also note a practical limitation of the StARS threshold selection on compositional ensemble data. In our stability analysis (Supplementary Table~S2), StARS consistently selected $\tau = 1.0$ (yielding $\leq 1$ edge) across all subsample counts from 5 to 50, regardless of the number of subsamples. This degeneracy arises because the min--max normalized ensemble scores follow a highly skewed distribution with a long tail of near-zero values, causing the instability-minimising threshold to collapse to the maximum score. Our reported AUROC and AUPRC results are based on the raw score ranking quality rather than StARS-selected edges, which is the standard evaluation protocol for network inference benchmarks. For practical applications, we recommend using fixed-density thresholds (e.g., selecting the top 5\% of edges) or FDR-based approaches instead of StARS for edge selection on compositional ensemble scores.
 
 
 %% ================================================================
