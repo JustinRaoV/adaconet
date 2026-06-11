@@ -88,19 +88,32 @@ def run_ablation_variants(counts: np.ndarray) -> tuple:
     spearman_reliable = alpha_p >= 0.05 and zero_frac < 0.5
     kept_mask = pipe._kept_mask
 
+    # Resolve copula key: prefer CCM, fall back to naive
+    copula_key = "copula_ccm" if "copula_ccm" in layer_scores else "copula_naive"
+    if "copula" in layer_scores:
+        copula_key = "copula"  # backward compat
+
+    # Build canonical layer dict with standard names
+    canon = {
+        "dm": layer_scores["dm"],
+        "spearman": layer_scores["spearman"],
+        "proportionality": layer_scores["proportionality"],
+        "copula": layer_scores[copula_key],
+    }
+
     variants = {}
 
     # Single layers
     for name in ["dm", "spearman", "proportionality", "copula"]:
-        variants[name] = layer_scores[name].copy()
+        variants[name] = canon[name].copy()
 
     # Full adaptive (same as main pipeline)
     variants["full_adaptive"] = pipe._W.copy()
 
-    # Leave-one-out
+    # Leave-one-out (using theory weights if available, else equal)
     for exclude in ["dm", "spearman", "proportionality", "copula"]:
-        included = [k for k in ["dm", "spearman", "proportionality", "copula"] if k != exclude]
-        scores = {k: layer_scores[k] for k in included}
+        included = [k for k in canon if k != exclude]
+        scores = {k: canon[k] for k in included}
         scores_norm = {k: normalize_scores(v) for k, v in scores.items()}
         K = len(scores_norm)
         weights = np.ones(K) / K
@@ -110,8 +123,8 @@ def run_ablation_variants(counts: np.ndarray) -> tuple:
         W = symmetrize(W, method="max")
         variants[f"no_{exclude}"] = W
 
-    # Fixed 4-layer (always include Spearman, no adaptive exclusion)
-    all_scores = {k: layer_scores[k] for k in ["dm", "spearman", "proportionality", "copula"]}
+    # Fixed 4-layer (always include Spearman, equal weights)
+    all_scores = {k: canon[k] for k in ["dm", "spearman", "proportionality", "copula"]}
     all_norm = {k: normalize_scores(v) for k, v in all_scores.items()}
     K = 4
     weights = np.ones(K) / K
@@ -120,6 +133,11 @@ def run_ablation_variants(counts: np.ndarray) -> tuple:
     W_fixed = normalize_scores(W_fixed)
     W_fixed = symmetrize(W_fixed, method="max")
     variants["fixed_4layer"] = W_fixed
+
+    # Naive copula vs CCM copula (if both available)
+    if "copula_naive" in layer_scores and "copula_ccm" in layer_scores:
+        variants["copula_naive_only"] = layer_scores["copula_naive"].copy()
+        variants["copula_ccm_only"] = layer_scores["copula_ccm"].copy()
 
     return variants, kept_mask
 
@@ -172,6 +190,7 @@ def run_v4_experiments(n_repeats: int) -> dict:
             "dm", "spearman", "proportionality", "copula",
             "no_dm", "no_spearman", "no_proportionality", "no_copula",
             "fixed_4layer", "full_adaptive",
+            "copula_naive_only", "copula_ccm_only",
         ]}
 
         for seed in range(n_repeats):

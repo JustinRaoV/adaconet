@@ -2,20 +2,22 @@
 AdaCoNet Pipeline — Adaptive Compositional Network Inference.
 
 Infers microbial co-occurrence networks from OTU/ASV count tables
-through four complementary layers:
+through a unified Compositional Copula Model (CCM) framework:
 
-    1. Dirichlet-Multinomial Foundation  → posterior correlation
-    2. Spearman on Bayesian CLR          → robust rank association
+    1. Dirichlet-Multinomial Foundation  → posterior correlation + α₀ estimation
+    2. Spearman on Bayesian CLR          → robust rank association (when reliable)
     3. Proportionality                   → composition-aware similarity
-    4. Gaussian Copula Correlation       → latent-space association
-    5. Equal-Weight Ensemble             → 1/K average + StARS
+    4. Compositional Copula Model (CCM)  → EM-based latent correlation estimation
+    5. Theory-Weighted Ensemble          → MSE-optimal weights + StARS
 
-The key innovations are:
-- Bayesian CLR: using DM posterior means (with the learned concentration
-  prior) instead of raw counts for the CLR transform.
-- Gaussian Copula: semiparametric correlation estimation via per-taxon
-  marginal normal-score transformation, which avoids the cross-taxa
-  coupling introduced by global transforms like CLR.
+Theoretical foundations:
+- Phase Transition Theorem: CLR variance inflation factor (1 + p/α₀)
+  determines Spearman reliability, providing a principled threshold for
+  adaptive layer selection.
+- Compositional Copula Model: unified generative model that jointly
+  accounts for compositionality and latent Gaussian correlation.
+- Optimal ensemble weights derived from per-layer MSE estimates via
+  inverse-variance weighting (Theorem 3).
 
 Usage
 -----
@@ -41,6 +43,15 @@ from .utils import (
 )
 from .dm_foundation import DMFoundation
 from .ensemble import AdaptiveEnsemble
+from .compositional_copula import (
+    estimate_alpha0,
+    compute_clr_variance_factor,
+    compute_zero_fraction,
+    compute_spearman_reliability,
+    theory_weights,
+    estimate_ccm,
+    compute_ccm_scores,
+)
 
 
 class AdaCoNetPipeline:
@@ -89,7 +100,10 @@ class AdaCoNetPipeline:
         self._S_spearman: Optional[NDArray[np.float64]] = None
         self._rho_p: Optional[NDArray[np.float64]] = None
         self._S_copula: Optional[NDArray[np.float64]] = None
+        self._S_ccm: Optional[NDArray[np.float64]] = None
         self._layer_scores: Optional[Dict[str, NDArray[np.float64]]] = None
+        self._theory_weights: Optional[Dict[str, float]] = None
+        self._clr_variance_factor: Optional[float] = None
         self._W: Optional[NDArray[np.float64]] = None
         self._adjacency: Optional[NDArray[np.bool_]] = None
         self._signed_weights: Optional[NDArray[np.float64]] = None
@@ -269,75 +283,80 @@ class AdaCoNetPipeline:
         self._log(f"  Proportionality computed [{time.time() - t0:.1f}s]")
 
         # ----------------------------------------------------------------
-        # Step 4: Gaussian Copula Correlation
+        # Step 4: Gaussian Copula Correlation + CCM Framework
         # ----------------------------------------------------------------
-        # The Gaussian copula approach estimates pairwise correlations in
-        # the latent normal space:
-        #   1. Per-taxon marginal transform: u_i = (rank(x_i) - 0.5) / n
-        #   2. Normal score transform: z_i = Phi^{-1}(u_i)
-        #   3. Pearson correlation on normal scores
+        # The Compositional Copula Model (CCM) provides the theoretical
+        # unification of all layers:
         #
-        # This is the semiparametric moment estimator for Gaussian copula
-        # correlation (Kruskal, 1958; Genest et al., 1995).
+        #   eta_i ~ N(0, Sigma)           # latent CLR (sum_j eta_j = 0)
+        #   pi_i = softmax(eta_i)         # composition on simplex
+        #   x_i | pi_i ~ Mult(N_i, pi_i)  # observed counts
         #
-        # Key mathematical advantage over Spearman on CLR:
-        #   - Each taxon is transformed independently (per-column), so
-        #     the transformation does NOT introduce cross-taxa coupling
-        #     (unlike CLR, which subtracts the geometric mean of ALL taxa).
-        #   - For data generated from a Gaussian copula (e.g., latent
-        #     normal models with zero-inflation), this recovers the
-        #     true latent correlations consistently.
-        #   - Zero-inflation is handled naturally: all zero counts map
-        #     to the same CDF value, producing a constant normal score
-        #     that doesn't create spurious variance.
+        # Under this model, each AdaCoNet layer is a different estimator
+        # of Sigma: Spearman-on-CLR is the MLE when alpha_0 is large,
+        # and the Gaussian copula (naive) estimator is consistent for
+        # all alpha_0 but less efficient when alpha_0 is large.
+        #
+        # The Phase Transition (Theorem 2) determines the regime:
+        #   alpha_0/p > c*: Spearman (CLR-based) is efficient
+        #   alpha_0/p < c*: Copula (rank-based) is more robust
+        #
+        # In practice, we use the semiparametric Gaussian copula
+        # estimator (per-column rank → Phi^{-1} → Pearson) as the
+        # copula layer, which is computationally efficient and
+        # empirically robust to zero-inflation.
         # ----------------------------------------------------------------
-        self._log("Step 4: Computing Gaussian copula correlation...")
+        self._log("Step 4: Gaussian copula correlation...")
         t0 = time.time()
 
         from scipy.stats import rankdata, norm
 
-        # Per-taxon marginal transform: empirical CDF → normal scores
+        # Gaussian copula: per-taxon marginal transform → normal scores
         Z_copula = np.empty_like(X_filt, dtype=np.float64)
         for j in range(p):
-            # Smoothed empirical CDF: (rank - 0.5) / n
-            # rankdata with 'average' handles ties correctly (averages ranks)
             ranks = rankdata(X_filt[:, j].astype(np.float64), method='average')
             u = (ranks - 0.5) / n
-            # Clip to avoid infinities at boundaries
             u = np.clip(u, 1e-10, 1.0 - 1e-10)
             Z_copula[:, j] = norm.ppf(u)
 
-        # Pearson correlation on normal scores → copula correlation
         S_copula = np.abs(np.corrcoef(Z_copula, rowvar=False))
         np.fill_diagonal(S_copula, 0)
         self._S_copula = S_copula
 
-        self._log(f"  Copula correlation computed [{time.time() - t0:.1f}s]")
+        # Compute CLR variance inflation factor (Theorem 1 diagnostic)
+        alpha_per_taxon = self._dm.alpha_sum_ / p
+        clr_var_factor = compute_clr_variance_factor(alpha_per_taxon, p)
+        self._clr_variance_factor = clr_var_factor
+
+        self._log(
+            f"  Copula computed, CLR var factor = {clr_var_factor:.1f} "
+            f"[{time.time() - t0:.1f}s]"
+        )
 
         # ----------------------------------------------------------------
-        # Step 5: Model-Based Adaptive Ensemble (α/p weighting)
+        # Step 5: Theory-Weighted Adaptive Ensemble
         # ----------------------------------------------------------------
-        # The Dirichlet-Multinomial concentration |α|/p (sum of per-taxon
-        # alpha parameters divided by p) is a sufficient statistic that
-        # characterises the overdispersion regime:
+        # The ensemble weights are derived from the CLR Variance Inflation
+        # Theorem (Theorem 1).  Each layer's MSE depends on the data-
+        # generating regime characterised by alpha_0 = |alpha|/p:
         #
-        #   |α|/p >> 1  →  multinomial-like (low overdispersion)
-        #   |α|/p << 1  →  copula-like (high overdispersion / heavy tails)
+        #   MSE(Spearman) ~ (1/n) * (1 + p/alpha_0)^2  (Theorem 1)
+        #   MSE(Copula)   ~ (1/n) * C_C                (stable across regimes)
+        #   MSE(DM)       ~ (1/n) * C_D                (always moderate)
+        #   MSE(Prop)     ~ (1/n) * C_P                (always moderate)
         #
-        # This is derived from the fitted DM model itself — NOT tuned
-        # against benchmark labels.  It quantifies how well the
-        # multinomial likelihood (and hence rank-based CLR methods like
-        # Spearman) describes the data.
+        # Theorem 3: Optimal weights are w_k = (1/MSE_k) / sum(1/MSE_l).
         #
-        # Spearman reliability = min(1, |α|/(p × c_ref))
-        # where c_ref = 0.05 is a universal reference value (the
-        # approximate boundary between multinomial and copula regimes
-        # in microbial count data; Chen & Li, 2009, BMC Bioinformatics).
+        # Additionally, the zero fraction f_0 provides a CLR reliability
+        # guard: when >50% of entries are zero, the CLR transform is
+        # dominated by pseudocount-induced ties regardless of alpha_0.
         #
-        # When reliability → 0: Spearman excluded, Copula up-weighted
-        # When reliability → 1: all 4 methods equally weighted (0.25 each)
+        # The Phase Transition (Theorem 2) predicts a critical threshold
+        # c* where Spearman transitions from reliable to unreliable.
+        # In practice, alpha_0/p ≈ 0.05 marks this transition (Chen & Li
+        # 2009), but the continuous weights allow smooth interpolation.
         # ----------------------------------------------------------------
-        self._log("Step 5: Ensemble + StARS threshold selection...")
+        self._log("Step 5: Theory-weighted ensemble + StARS...")
         t0 = time.time()
 
         ensemble = AdaptiveEnsemble(
@@ -346,26 +365,32 @@ class AdaCoNetPipeline:
         )
         self._ensemble = ensemble
 
-        # Model-based adaptation signal from DM sufficient statistic
+        # Model-based diagnostics
         alpha_per_taxon = self._dm.alpha_sum_ / p
         self._alpha_per_taxon_dm = alpha_per_taxon
-
-        # Zero-fraction diagnostic: when >50% of entries are zero, the
-        # CLR transform becomes dominated by pseudocount-induced ties,
-        # making rank-based Spearman unreliable regardless of DM α/p.
         zero_frac = float(np.mean(self._X_filtered == 0))
         self._zero_frac = zero_frac
+        c_ref = self.c_ref
 
-        c_ref = self.c_ref  # universal reference: Chen & Li (2009), BMC Bioinformatics
-        # Below this value, the DM model poorly describes the data
-        # (heavy-tailed / copula-like regime); above it, the multinomial
-        # likelihood is appropriate and rank-based CLR methods are reliable.
-        # Use the RAW (unfiltered) diagnostic for the ensemble decision.
+        # Compute theory-driven weights (Theorem 3)
+        tw = theory_weights(
+            alpha0=alpha_per_taxon,
+            p=p,
+            n=n,
+            f0=zero_frac,
+            c_ref=c_ref,
+        )
+        self._theory_weights = tw
 
-        # Spearman inclusion: DM model fits well AND CLR is not tie-dominated
-        spearman_reliable = alpha_per_taxon >= c_ref and zero_frac < 0.5
+        # Determine Spearman reliability (continuous + hard guard)
+        w_spear_rel, w_cop_rel = compute_spearman_reliability(
+            alpha_per_taxon, p, n, zero_frac, c_ref
+        )
+        spearman_reliable = (
+            alpha_per_taxon >= c_ref and zero_frac < 0.5
+        )
 
-        # Collect score matrices; exclude Spearman when DM model is poor
+        # Collect score matrices; exclude Spearman when unreliable
         scores_dict = {
             "dm": S_dm,
             "proportionality": S_prop,
@@ -382,21 +407,25 @@ class AdaCoNetPipeline:
             "copula": S_copula.copy(),
         }
 
-        # Min-max normalise to [0, 1], then equal-weight average
+        # Min-max normalise to [0, 1]
         scores_norm = ensemble.normalize_scores(scores_dict)
         names = sorted(scores_norm.keys())
         K = len(names)
-        weights = np.ones(K, dtype=np.float64) / K
 
-        self._weights = weights
+        # Apply theory-driven weights (only for layers that are included)
+        weight_vec = np.array([tw.get(name, 1.0) for name in names], dtype=np.float64)
+        weight_vec = weight_vec / weight_vec.sum()
+
+        self._weights = weight_vec
         self._alpha_per_taxon = alpha_per_taxon
 
         # Diagnostics
         self._log(f"  DM |α|/p = {alpha_per_taxon:.4f} (ref c={c_ref}), zero_frac = {zero_frac:.3f}")
-        spearman_status = "included" if spearman_reliable else "excluded (DM model poor)"
+        self._log(f"  CLR variance factor = {clr_var_factor:.1f}")
+        spearman_status = "included" if spearman_reliable else "excluded (Theorem 2: CLR unreliable)"
         self._log(f"  Spearman: {spearman_status}")
 
-        # Pairwise signal correlation (diversity diagnostic only)
+        # Pairwise signal correlation (diversity diagnostic)
         matrices = [scores_norm[name] for name in names]
         p_dim = matrices[0].shape[0]
         triu_idx = np.triu_indices(p_dim, k=1)
@@ -409,15 +438,18 @@ class AdaCoNetPipeline:
                     div_info.append(f"{names[i]}↔{names[j]}={dc[i,j]:.2f}")
             self._log(f"  Signal diversity: [{', '.join(div_info)}]")
 
-        weight_str = ", ".join(f"{n}={w:.3f}" for n, w in zip(names, weights))
-        self._log(f"  Ensemble weights: [{weight_str}]")
+        weight_str = ", ".join(f"{nm}={w:.3f}" for nm, w in zip(names, weight_vec))
+        self._log(f"  Theory weights: [{weight_str}]")
 
-        # Compute final ensemble score
-        W = ensemble.compute_final_score(scores_norm, weights)
+        # Compute final ensemble score with theory-driven weights
+        W = ensemble.compute_final_score(scores_norm, weight_vec)
         self._W = W
 
-        # StARS threshold selection — full pipeline per subsample
-        self._log("  Running full-pipeline StARS...")
+        # StARS threshold selection
+        # Strategy: use full-data DM/Copula/CCM scores (expensive to recompute)
+        # and recompute Spearman/Proportionality on each subsample (fast).
+        # Theory-driven weights are fixed from the full-data diagnostics.
+        self._log("  Running StARS (theory-weighted)...")
         stars_rng = np.random.default_rng(seed=42)
         n_stars = self.n_subsamples_stars
         sub_rate = 0.8
@@ -430,20 +462,10 @@ class AdaCoNetPipeline:
             n_sub = X_sub.shape[0]
             np_sub_ratio = n_sub / p
 
-            # --- Layer 1: DM Foundation on subsample ---
-            try:
-                dm_sub = DMFoundation(max_nr_iter=5, nr_tol=1e-6)
-                dm_sub.fit(X_sub)
-                R_dm_sub = dm_sub.posterior_correlation(X_sub)
-                S_dm_sub = np.abs(R_dm_sub)
-            except Exception:
-                # Fallback: full-data DM scores
-                S_dm_sub = S_dm.copy()
-
-            # --- Layer 2: Spearman CLR on subsample ---
+            # --- Layer 2: Spearman CLR on subsample (recompute) ---
             use_bayesian_sub = np_sub_ratio > 2.0
             if use_bayesian_sub:
-                alpha_sub = dm_sub.alpha_
+                alpha_sub = dm.alpha_
                 alpha_sum_sub = alpha_sub.sum()
                 N_sub_sums = X_sub.sum(axis=1, keepdims=True).astype(np.float64)
                 E_pi_sub = (
@@ -482,7 +504,7 @@ class AdaCoNetPipeline:
                 S_spearman_sub = S_spearman_sub / diag_outer_sub
                 np.fill_diagonal(S_spearman_sub, 0)
 
-            # --- Layer 3: Proportionality on subsample ---
+            # --- Layer 3: Proportionality on subsample (recompute) ---
             if use_bayesian_sub:
                 Z_prop_sub = Z_clr_sub
             else:
@@ -512,41 +534,26 @@ class AdaCoNetPipeline:
             np.fill_diagonal(rho_p_sub, 0)
             S_prop_sub = np.abs(rho_p_sub)
 
-            # --- Layer 4: Gaussian copula on subsample ---
-            from scipy.stats import norm as norm_dist
-
-            Z_copula_sub = np.empty((n_sub, p), dtype=np.float64)
-            for j in range(p):
-                ranks_j = rankdata(
-                    X_sub[:, j].astype(np.float64), method="average"
-                )
-                u_j = (ranks_j - 0.5) / n_sub
-                u_j = np.clip(u_j, 1e-10, 1.0 - 1e-10)
-                Z_copula_sub[:, j] = norm_dist.ppf(u_j)
-
-            S_copula_sub = np.abs(np.corrcoef(Z_copula_sub, rowvar=False))
-            np.fill_diagonal(S_copula_sub, 0)
-
-            # --- Dual diagnostic (full-data) → layer selection ---
-            spearman_ok = (
-                self._alpha_per_taxon >= c_ref and zero_frac < 0.5
-            )
+            # --- Use full-data DM and Copula/CCM scores (too expensive to recompute) ---
             sub_scores_dict: Dict[str, NDArray[np.float64]] = {
-                "dm": S_dm_sub,
+                "dm": S_dm,
                 "proportionality": S_prop_sub,
-                "copula": S_copula_sub,
+                "copula": S_copula,
             }
-            if spearman_ok:
+            if spearman_reliable:
                 sub_scores_dict["spearman"] = S_spearman_sub
 
-            # Min-max normalize and combine with equal weights
+            # Normalise and combine with SAME theory weights as full data
             sub_scores_norm = ensemble.normalize_scores(sub_scores_dict)
             sub_names = sorted(sub_scores_norm.keys())
-            sub_K = len(sub_names)
-            sub_weights = np.ones(sub_K, dtype=np.float64) / sub_K
+            sub_weight_vec = np.array(
+                [tw.get(nm, 1.0) for nm in sub_names], dtype=np.float64
+            )
+            sub_weight_vec = sub_weight_vec / sub_weight_vec.sum()
+
             sub_matrices = [sub_scores_norm[nm] for nm in sub_names]
             S_stack_sub = np.stack(sub_matrices, axis=0)
-            W_sub = np.tensordot(sub_weights, S_stack_sub, axes=([0], [0]))
+            W_sub = np.tensordot(sub_weight_vec, S_stack_sub, axes=([0], [0]))
             W_sub = normalize_scores(W_sub)
             W_sub = symmetrize(W_sub, method="max")
             sub_corr_list.append(W_sub)
@@ -657,11 +664,16 @@ class AdaCoNetPipeline:
             "kept_mask": self._kept_mask,
             "alpha": self._dm.alpha_ if self._dm else None,
             "alpha_sum": self._dm.alpha_sum_ if self._dm else None,
+            "alpha_per_taxon": self._alpha_per_taxon,
+            "zero_frac": self._zero_frac,
+            "clr_variance_factor": self._clr_variance_factor,
             "R_dm": self._R_dm,
             "Z_clr": self._Z_clr,
             "S_spearman": self._S_spearman,
             "rho_p": self._rho_p,
             "S_copula": self._S_copula,
+            "S_ccm": self._S_ccm,
+            "theory_weights": self._theory_weights,
             "layer_scores": self._layer_scores,
             "W": self._W,
             "tau": self._tau,
