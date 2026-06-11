@@ -1,0 +1,184 @@
+{
+  "SD2 N200": {
+    "methods": {
+      "AdaCoNet": {
+        "auroc_mean": 0.6322079753704596,
+        "auprc_mean": 0.4169773216067004,
+        "time_mean": 0.13850998878479004
+      },
+      "SparCC": {
+        "auroc_mean": 0.5892675883830327,
+        "auprc_mean": 0.235557282231975,
+        "time_mean": 16.47951626777649
+      },
+      "REBACCA": {
+        "auroc_mean": 0.626249948885624,
+        "auprc_mean": 0.26246288881372404,
+        "time_mean": 0.007181882858276367
+      },
+      "CCLasso": {
+        "auroc_mean": 0.6161553824063944,
+        "auprc_mean": 0.2558382490293528,
+        "time_mean": 1.9435980319976807
+      },
+      "FastSpar": {
+        "auroc_mean": 0.5571801015655379,
+        "auprc_mean": 0.22141970884536427,
+        "time_mean": 9.945684909820557
+      },
+      "Spearman": {
+        "auroc_mean": 0.44691399989468816,
+        "auprc_mean": 0.1810185129750586,
+        "time_mean": 0.008300065994262695
+      },
+      "Proportionality": {
+        "auroc_mean": 0.8338600566807681,
+        "auprc_mean": 0.6763105113577207,
+        "time_mean": 0.0006248950958251953
+      },
+      "Glasso": {
+        "auroc_mean": 0.5,
+        "auprc_mean": 0.2051722510618216,
+        "time_mean": 25.07522201538086
+      },
+      "SPIEC-EASI": {
+        "auroc_mean": 0.5,
+        "auprc_mean": 0.2051722510618216,
+        "time_mean": 9.422308921813965
+      }
+    },
+    "ablation": {
+      "dm": {
+        "auroc_mean": 0.5889872388407185,
+        "auprc_mean": 0.2839208870613078
+      },
+      "spearman": {
+        "auroc_mean": 0.5659302261202978,
+        "auprc_mean": 0.22755418484351772
+      },
+      "proportionality": {
+        "auroc_mean": 0.6084569335429031,
+        "auprc_mean": 0.32920310654256935
+      },
+      "copula": {
+        "auroc_mean": 0.6406601266573705,
+        "auprc_mean": 0.4805779534417861
+      },
+      "full_adaptive": {
+        "auroc_mean": 0.6322079753704596,
+        "auprc_mean": 0.4169773216067004
+      },
+      "no_dm": {
+        "auroc_mean": 0.6068534356357659,
+        "auprc_mean": 0.31218706743999025
+      },
+      "no_spearman": {
+        "auroc_mean": 0.6322079753704596,
+        "auprc_mean": 0.4169773216067004
+      },
+      "no_proportionality": {
+        "auroc_mean": 0.6022757551416233,
+        "auprc_mean": 0.30785441384720424
+      },
+      "no_copula": {
+        "auroc_mean": 0.5857371118233787,
+        "auprc_mean": 0.2629863773044965
+      },
+      "fixed_4layer": {
+        "auroc_mean": 0.6078373073452354,
+        "auprc_mean": 0.3213114364966455
+      }
+    }
+  },
+  "SD2 N500": {
+    "methods": {
+      "AdaCoNet": {
+        "auroc_mean": 0.7158180655748444,
+        "auprc_mean": 0.4393716751012132,
+        "time_mean": 0.16595077514648438
+      },
+      "SparCC": {
+        "auroc_mean": 0.6438885833929413,
+        "auprc_mean": 0.1339328612755614,
+        "time_mean": 14.599164009094238
+      },
+      "REBACCA": {
+        "auroc_mean": 0.683466810247376,
+        "auprc_mean": 0.15833946057347234,
+        "time_mean": 0.00873708724975586
+      },
+      "CCLasso": {
+        "auroc_mean": 0.6623670438448007,
+        "auprc_mean": 0.14978976349530926,
+        "time_mean": 2.0553109645843506
+      },
+      "FastSpar": {
+        "auroc_mean": 0.6425976383262347,
+        "auprc_mean": 0.13265026351845516,
+        "time_mean": 10.594070196151733
+      },
+      "Spearman": {
+        "auroc_mean": 0.44319667921371375,
+        "auprc_mean": 0.0857757832968093,
+        "time_mean": 0.012026071548461914
+      },
+      "Proportionality": {
+        "auroc_mean": 0.8994506855174766,
+        "auprc_mean": 0.6666844390938369,
+        "time_mean": 0.0011401176452636719
+      },
+      "Glasso": {
+        "auroc_mean": 0.49993944165203175,
+        "auprc_mean": 0.09294149958802526,
+        "time_mean": 38.60855007171631
+      },
+      "SPIEC-EASI": {
+        "auroc_mean": 0.7011434233721595,
+        "auprc_mean": 0.3589840334859381,
+        "time_mean": 19.66062903404236
+      }
+    },
+    "ablation": {
+      "dm": {
+        "auroc_mean": 0.6591594437673586,
+        "auprc_mean": 0.1930999170528515
+      },
+      "spearman": {
+        "auroc_mean": 0.6193678231020505,
+        "auprc_mean": 0.11612393820154975
+      },
+      "proportionality": {
+        "auroc_mean": 0.6912304934554114,
+        "auprc_mean": 0.34958920760165413
+      },
+      "copula": {
+        "auroc_mean": 0.7212231963892273,
+        "auprc_mean": 0.4951521989400733
+      },
+      "full_adaptive": {
+        "auroc_mean": 0.7158180655748444,
+        "auprc_mean": 0.4393716751012132
+      },
+      "no_dm": {
+        "auroc_mean": 0.6781802370734451,
+        "auprc_mean": 0.24437828398976622
+      },
+      "no_spearman": {
+        "auroc_mean": 0.7158180655748444,
+        "auprc_mean": 0.4393716751012132
+      },
+      "no_proportionality": {
+        "auroc_mean": 0.6709776551149111,
+        "auprc_mean": 0.20549979048720457
+      },
+      "no_copula": {
+        "auroc_mean": 0.6489061216918014,
+        "auprc_mean": 0.16687100072731048
+      },
+      "fixed_4layer": {
+        "auroc_mean": 0.6804882307228837,
+        "auprc_mean": 0.2589812444700681
+      }
+    }
+  }
+}

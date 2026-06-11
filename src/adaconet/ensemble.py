@@ -62,7 +62,7 @@ class AdaptiveEnsemble:
     ----------
     n_folds : int, default 5
         Number of cross-validation folds for weight learning.
-    n_subsamples : int, default 5
+    n_subsamples : int, default 10
         Number of subsampling iterations for StARS.
     subsample_rate : float, default 0.8
         Fraction of samples retained in each StARS subsample.
@@ -73,7 +73,7 @@ class AdaptiveEnsemble:
     def __init__(
         self,
         n_folds: int = 5,
-        n_subsamples: int = 5,
+        n_subsamples: int = 10,
         subsample_rate: float = 0.8,
         tau_grid_size: int = 20,
     ) -> None:

@@ -54,7 +54,7 @@ class AdaCoNetPipeline:
         Minimum prevalence fraction for taxon filtering.
     tau_zero : float, default 0.05
         Minimum edge weight to consider (pre-filter for StARS).
-    n_subsamples_stars : int, default 5
+    n_subsamples_stars : int, default 10
         Number of subsampling iterations for StARS threshold selection.
     verbose : bool, default True
         Print progress and timing information.
@@ -65,7 +65,8 @@ class AdaCoNetPipeline:
         n_folds: int = 3,
         min_prevalence: float = 0.05,
         tau_zero: float = 0.05,
-        n_subsamples_stars: int = 5,
+        n_subsamples_stars: int = 10,
+        c_ref: float = 0.05,
         verbose: bool = True,
         **kwargs: Any,
     ) -> None:
@@ -73,6 +74,7 @@ class AdaCoNetPipeline:
         self.min_prevalence = min_prevalence
         self.tau_zero = tau_zero
         self.n_subsamples_stars = n_subsamples_stars
+        self.c_ref = c_ref
         self.verbose = verbose
 
         # State populated by fit()
@@ -354,7 +356,7 @@ class AdaCoNetPipeline:
         zero_frac = float(np.mean(self._X_filtered == 0))
         self._zero_frac = zero_frac
 
-        c_ref = 0.05  # universal reference: Chen & Li (2009), BMC Bioinformatics
+        c_ref = self.c_ref  # universal reference: Chen & Li (2009), BMC Bioinformatics
         # Below this value, the DM model poorly describes the data
         # (heavy-tailed / copula-like regime); above it, the multinomial
         # likelihood is appropriate and rank-based CLR methods are reliable.
@@ -414,10 +416,167 @@ class AdaCoNetPipeline:
         W = ensemble.compute_final_score(scores_norm, weights)
         self._W = W
 
-        # StARS threshold selection
-        tau = ensemble.select_threshold_stars(
-            W, X_filt, n_subsamples=self.n_subsamples_stars
-        )
+        # StARS threshold selection — full pipeline per subsample
+        self._log("  Running full-pipeline StARS...")
+        stars_rng = np.random.default_rng(seed=42)
+        n_stars = self.n_subsamples_stars
+        sub_rate = 0.8
+        sub_corr_list = []
+
+        for b in range(n_stars):
+            sub_size = max(int(n * sub_rate), 10)
+            sub_idx = stars_rng.choice(n, size=sub_size, replace=False)
+            X_sub = X_filt[sub_idx]
+            n_sub = X_sub.shape[0]
+            np_sub_ratio = n_sub / p
+
+            # --- Layer 1: DM Foundation on subsample ---
+            try:
+                dm_sub = DMFoundation(max_nr_iter=5, nr_tol=1e-6)
+                dm_sub.fit(X_sub)
+                R_dm_sub = dm_sub.posterior_correlation(X_sub)
+                S_dm_sub = np.abs(R_dm_sub)
+            except Exception:
+                # Fallback: full-data DM scores
+                S_dm_sub = S_dm.copy()
+
+            # --- Layer 2: Spearman CLR on subsample ---
+            use_bayesian_sub = np_sub_ratio > 2.0
+            if use_bayesian_sub:
+                alpha_sub = dm_sub.alpha_
+                alpha_sum_sub = alpha_sub.sum()
+                N_sub_sums = X_sub.sum(axis=1, keepdims=True).astype(np.float64)
+                E_pi_sub = (
+                    X_sub.astype(np.float64) + alpha_sub[np.newaxis, :]
+                ) / (N_sub_sums + alpha_sum_sub)
+                Z_clr_sub = np.log(E_pi_sub) - np.log(E_pi_sub).mean(
+                    axis=1, keepdims=True
+                )
+            else:
+                X_sub_float = X_sub.astype(np.float64) + 0.5
+                rel_sub = X_sub_float / X_sub_float.sum(
+                    axis=1, keepdims=True
+                )
+                log_rel_sub = np.log(rel_sub)
+                Z_clr_sub = log_rel_sub - log_rel_sub.mean(
+                    axis=1, keepdims=True
+                )
+                Z_clr_sub = (
+                    Z_clr_sub - Z_clr_sub.mean(axis=0, keepdims=True)
+                ) / np.maximum(Z_clr_sub.std(axis=0, keepdims=True), 1e-10)
+
+            from scipy.stats import rankdata
+
+            ranked_sub = np.apply_along_axis(rankdata, 0, Z_clr_sub)
+            S_spearman_sub = np.abs(np.corrcoef(ranked_sub, rowvar=False))
+            np.fill_diagonal(S_spearman_sub, 0)
+
+            if np_sub_ratio <= 2.0:
+                from sklearn.covariance import LedoitWolf
+
+                lw_sub = LedoitWolf().fit(ranked_sub)
+                S_spearman_sub = np.abs(lw_sub.covariance_)
+                diag_sub = np.sqrt(np.diag(S_spearman_sub))
+                diag_outer_sub = np.outer(diag_sub, diag_sub)
+                diag_outer_sub = np.maximum(diag_outer_sub, 1e-15)
+                S_spearman_sub = S_spearman_sub / diag_outer_sub
+                np.fill_diagonal(S_spearman_sub, 0)
+
+            # --- Layer 3: Proportionality on subsample ---
+            if use_bayesian_sub:
+                Z_prop_sub = Z_clr_sub
+            else:
+                X_prop_sub = X_sub.astype(np.float64) + 0.5
+                rel_prop_sub = X_prop_sub / X_prop_sub.sum(
+                    axis=1, keepdims=True
+                )
+                Z_prop_sub = np.log(rel_prop_sub)
+                Z_prop_sub = Z_prop_sub - Z_prop_sub.mean(
+                    axis=1, keepdims=True
+                )
+
+            var_z_sub = Z_prop_sub.var(axis=0, ddof=1)
+            Z_c_sub = Z_prop_sub - Z_prop_sub.mean(axis=0, keepdims=True)
+            cov_sub = (Z_c_sub.T @ Z_c_sub) / (n_sub - 1)
+            vlr_sub = (
+                var_z_sub[:, np.newaxis]
+                + var_z_sub[np.newaxis, :]
+                - 2.0 * cov_sub
+            )
+            denom_sub = np.maximum(
+                var_z_sub[:, np.newaxis] + var_z_sub[np.newaxis, :],
+                1e-15,
+            )
+            rho_p_sub = 1.0 - vlr_sub / denom_sub
+            np.clip(rho_p_sub, -1, 1, out=rho_p_sub)
+            np.fill_diagonal(rho_p_sub, 0)
+            S_prop_sub = np.abs(rho_p_sub)
+
+            # --- Layer 4: Gaussian copula on subsample ---
+            from scipy.stats import norm as norm_dist
+
+            Z_copula_sub = np.empty((n_sub, p), dtype=np.float64)
+            for j in range(p):
+                ranks_j = rankdata(
+                    X_sub[:, j].astype(np.float64), method="average"
+                )
+                u_j = (ranks_j - 0.5) / n_sub
+                u_j = np.clip(u_j, 1e-10, 1.0 - 1e-10)
+                Z_copula_sub[:, j] = norm_dist.ppf(u_j)
+
+            S_copula_sub = np.abs(np.corrcoef(Z_copula_sub, rowvar=False))
+            np.fill_diagonal(S_copula_sub, 0)
+
+            # --- Dual diagnostic (full-data) → layer selection ---
+            spearman_ok = (
+                self._alpha_per_taxon >= c_ref and zero_frac < 0.5
+            )
+            sub_scores_dict: Dict[str, NDArray[np.float64]] = {
+                "dm": S_dm_sub,
+                "proportionality": S_prop_sub,
+                "copula": S_copula_sub,
+            }
+            if spearman_ok:
+                sub_scores_dict["spearman"] = S_spearman_sub
+
+            # Min-max normalize and combine with equal weights
+            sub_scores_norm = ensemble.normalize_scores(sub_scores_dict)
+            sub_names = sorted(sub_scores_norm.keys())
+            sub_K = len(sub_names)
+            sub_weights = np.ones(sub_K, dtype=np.float64) / sub_K
+            sub_matrices = [sub_scores_norm[nm] for nm in sub_names]
+            S_stack_sub = np.stack(sub_matrices, axis=0)
+            W_sub = np.tensordot(sub_weights, S_stack_sub, axes=([0], [0]))
+            W_sub = normalize_scores(W_sub)
+            W_sub = symmetrize(W_sub, method="max")
+            sub_corr_list.append(W_sub)
+
+        # Instability across subsamples for each tau in the grid
+        off_diag = W[np.triu_indices(p, k=1)]
+        tau_min = max(off_diag.min(), 0.0)
+        tau_max = off_diag.max()
+
+        if tau_max - tau_min < 1e-10:
+            tau = float(tau_min)
+        else:
+            tau_grid = np.linspace(tau_min, tau_max, 20)
+            n_edges = p * (p - 1) // 2
+            triu_idx = np.triu_indices(p, k=1)
+            instability = np.zeros(len(tau_grid), dtype=np.float64)
+
+            for t_idx, tau_cand in enumerate(tau_grid):
+                edge_counts = np.zeros(n_edges, dtype=np.float64)
+                for W_sub in sub_corr_list:
+                    adj_sub = (W_sub >= tau_cand).astype(np.float64)
+                    np.fill_diagonal(adj_sub, 0.0)
+                    adj_sub = np.maximum(adj_sub, adj_sub.T)
+                    edge_counts += adj_sub[triu_idx]
+                edge_probs = edge_counts / n_stars
+                edge_inst = 2.0 * edge_probs * (1.0 - edge_probs)
+                instability[t_idx] = edge_inst.mean()
+
+            best_idx = int(np.argmin(instability))
+            tau = float(tau_grid[best_idx])
         tau = max(tau, self.tau_zero)
         self._tau = tau
 

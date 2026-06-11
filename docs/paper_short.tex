@@ -43,7 +43,7 @@
 \accepted{Date}{0}{Year}
 
 \abstract{\textbf{Motivation:} Microbial co-occurrence networks inferred from compositional sequencing data are sensitive to the choice of statistical methodology, yet no single approach consistently outperforms alternatives across diverse data-generating mechanisms. Existing methods such as SparCC, CCLasso, REBACCA, and SPIEC-EASI each excel under specific assumptions but can fail catastrophically when those assumptions are violated.
-\textbf{Results:} We present AdaCoNet, a four-layer ensemble framework integrating Dirichlet--Multinomial (DM) posterior correlation, adaptive Spearman rank correlation on centered log-ratio data, VLR-based proportionality, and Gaussian copula correlation. A novel model-based adaptive weighting scheme uses the DM concentration parameter $|\alpha|/p$ and zero fraction as dual diagnostics to determine method suitability: when $|\alpha|/p$ is low or data are highly zero-inflated, rank-based CLR methods are excluded in favour of copula-compatible layers. Benchmarked against eight competing methods across two simulation frameworks ($N$ up to 1000, $P$ up to 1000, 3 seeds per configuration), AdaCoNet achieves the highest AUROC (up to 0.886) on direct-covariance data and 0.716 on SparseDOSSA2 Gaussian copula data (second only to standalone proportionality at 0.899), while being 26--184$\times$ faster than SparCC. An ablation study confirms the value of adaptive layer selection over fixed ensembles. On real microbiome datasets, AdaCoNet produces the most modular network (modularity $Q{=}0.510$) in under one second.
+\textbf{Results:} We present AdaCoNet, a four-layer ensemble framework integrating Dirichlet--Multinomial (DM) posterior correlation, adaptive Spearman rank correlation on centered log-ratio data, VLR-based proportionality, and Gaussian copula correlation. A novel model-based adaptive weighting scheme uses the DM concentration parameter $|\alpha|/p$ and zero fraction as dual diagnostics to determine method suitability: when $|\alpha|/p$ is low or data are highly zero-inflated, rank-based CLR methods are excluded in favour of copula-compatible layers. Benchmarked against eight competing methods across two simulation frameworks ($N$ up to 1000, $P$ up to 1000, 3 seeds per configuration), AdaCoNet achieves the highest AUROC (up to 0.886) on direct-covariance data and 0.716 on SparseDOSSA2 Gaussian copula data (second only to standalone proportionality at 0.899), while being 4--184$\times$ faster than SparCC. An ablation study confirms the value of adaptive layer selection over fixed ensembles. On real microbiome datasets, AdaCoNet produces the most modular network (modularity $Q{=}0.510$) in under one second.
 \textbf{Availability:} Source code and benchmark scripts are available at [repository URL].
 \textbf{Contact:} \href{email:xxx@fudan.edu.cn}{xxx@fudan.edu.cn}}
 
@@ -82,7 +82,7 @@ For each taxon $j$, the empirical CDF transform $u_{ij} = (\text{rank}(x_{ij}) -
 
 \subsection{Model-based adaptive ensemble}\label{ssec:ensemble}
 
-Score matrices are min--max normalized to $[0,1]$. Two complementary diagnostics determine method suitability. The DM concentration ratio $|\alpha|/p$ serves as a model-fit diagnostic: values above $c_{\text{ref}} = 0.05$ \cite{chen2009} indicate the multinomial regime where rank-based CLR methods are well-founded. The zero fraction $f_0$ measures CLR reliability: when more than half of entries are zero ($f_0 > 0.5$), the CLR transform is dominated by pseudocount-induced ties, rendering Spearman ranks uninformative. Spearman CLR is retained only when both conditions are satisfied ($|\alpha|/p \geq 0.05$ and $f_0 < 0.5$); otherwise, it is excluded and equal weights are distributed among the remaining layers. Edge selection uses StARS \cite{liu2010} with 10 subsamples at 80\% retention.
+Score matrices are min--max normalized to $[0,1]$. Two complementary diagnostics determine method suitability. The DM concentration ratio $|\alpha|/p$ serves as a model-fit diagnostic: values above $c_{\text{ref}} = 0.05$ \cite{chen2009} indicate the multinomial regime where rank-based CLR methods are well-founded. The zero fraction $f_0$ measures CLR reliability: when more than half of entries are zero ($f_0 > 0.5$), the CLR transform is dominated by pseudocount-induced ties, rendering Spearman ranks uninformative. Spearman CLR is retained only when both conditions are satisfied ($|\alpha|/p \geq 0.05$ and $f_0 < 0.5$); otherwise, it is excluded and equal weights are distributed among the remaining layers. Edge selection uses StARS \cite{liu2010} with 10 subsamples at 80\% retention, recomputing the full four-layer ensemble (including adaptive layer selection) on each subsample to ensure threshold stability reflects the complete pipeline's variability.
 
 
 %% ================================================================
@@ -136,13 +136,13 @@ CCLasso              & $0.463_{.015}$          & $0.526_{.027}$          & $0.28
 \end{tabular}
 \begin{tablenotes}
 \small
-AdaCoNet achieves $|\alpha|/p \geq 0.059$ and $f_0 < 0.5$ on all v4 configs, retaining all four layers. SparCC, FastSpar, and CCLasso were excluded at $P{=}1000$ due to computational cost. Subscripts denote standard deviations across seeds.
+AdaCoNet achieves $|\alpha|/p \geq 0.059$ on all v4 configs; Spearman is included in most configs ($f_0 < 0.5$) but excluded on seed~0 of $N{=}500, P{=}500$ and $N{=}1000, P{=}500$ where high zero inflation triggers the $f_0$ guard, and at $P{=}1000$ where $|\alpha|/p < 0.05$. SparCC, FastSpar, and CCLasso were excluded at $P{=}1000$ due to computational cost. Subscripts denote standard deviations across seeds.
 \end{tablenotes}
 \end{table}
 
 We evaluated nine methods using a direct-covariance-embedding simulator (edge density 10\%, $\rho \in [0.3, 0.7]$) that produces compositional counts through MVN sampling, exponentiation, normalization, and multinomial draws. Each configuration was run with 3 random seeds.
 
-AdaCoNet achieved the highest AUROC in most settings (Fig.~\ref{fig:v4bench}, Table~\ref{tab:v4}). At $N{=}200, P{=}50$, AdaCoNet reached 0.876/0.653 (AUROC/AUPRC), outperforming SparCC (0.855/0.585) and REBACCA (0.856/0.629). At $N{=}500, P{=}200$, AdaCoNet again led with 0.886/0.671. At larger scales ($N{=}500, P{=}500$), AdaCoNet (0.712) was competitive with SparCC (0.715) and FastSpar (0.716), while being 184$\times$ faster (0.47\,s vs 86\,s). At $N{=}1000, P{=}1000$, only REBACCA (0.731) outperformed AdaCoNet (0.692) among the computationally feasible methods. The $|\alpha|/p$ values ranged from 0.059 to 0.50 across v4 configurations with zero fraction $f_0 < 0.5$, correctly identifying the multinomial regime and retaining all four layers.
+AdaCoNet achieved the highest AUROC in most settings (Fig.~\ref{fig:v4bench}, Table~\ref{tab:v4}). At $N{=}200, P{=}50$, AdaCoNet reached 0.876/0.653 (AUROC/AUPRC), outperforming SparCC (0.855/0.585) and REBACCA (0.856/0.629). At $N{=}500, P{=}200$, AdaCoNet again led with 0.886/0.671. At larger scales ($N{=}500, P{=}500$), AdaCoNet (0.712) was competitive with SparCC (0.715) and FastSpar (0.716), while being 184$\times$ faster (0.47\,s vs 86\,s). At $N{=}1000, P{=}1000$, only REBACCA (0.731) outperformed AdaCoNet (0.692) among the computationally feasible methods. The $|\alpha|/p$ values ranged from 0.03 to 0.86 across v4 configurations and seeds, with zero fraction $f_0$ varying from 0.04 to 0.61 depending on the random seed. The dual diagnostic correctly adapted to each seed's data characteristics, including Spearman when appropriate and excluding it when zero inflation was too high or DM concentration too low.
 
 Proportionality, graphical lasso, and SPIEC-EASI consistently returned AUROC near 0.50, indicating poor match to the direct-covariance mechanism.
 
@@ -235,11 +235,47 @@ The cross-simulator inversion in ablation patterns---Spearman dominant on v4, Co
 \caption{\textbf{Speed--accuracy Pareto front.} AdaCoNet (blue) occupies the top-left region on both simulators. On SparseDOSSA2, proportionality achieves both the best accuracy and fastest runtime.}\label{fig:pareto}
 \end{figure}
 
-AdaCoNet completes in under 3 seconds at $P{=}1000$, while SparCC requires 86--236\,s at $P{=}500$ due to repeated lsq\_linear solves. REBACCA achieves near-instantaneous computation ($<$0.01\,s) through its closed-form Sherman--Morrison solution (Fig.~\ref{fig:pareto}). At $P{=}1000$, SparCC, FastSpar, and CCLasso were excluded from benchmarking due to prohibitive computational cost.
+AdaCoNet completes in under 3 seconds at $P{=}1000$, while SparCC requires 63--86\,s at $P{=}500$ due to repeated lsq\_linear solves. REBACCA achieves near-instantaneous computation ($<$0.01\,s) through its closed-form Sherman--Morrison solution (Fig.~\ref{fig:pareto}). At $P{=}1000$, SparCC, FastSpar, and CCLasso were excluded from benchmarking due to prohibitive computational cost.
 
 \subsection{Real data applications}\label{ssec:real}
 
-On the Enterotype dataset ($N{=}280$, $P{=}550$), AdaCoNet produced the highest modularity ($Q{=}0.510$, 5917 edges) in 0.44\,s. On MovingPictures ($N{=}1967$, $P{=}926$), proportionality achieved the highest modularity ($Q{=}0.438$), followed by SPIEC-EASI (0.415); AdaCoNet returned 0.163 in 3.12\,s. The divergence mirrors simulations: AdaCoNet excels when $|\alpha|/p$ indicates multinomial structure, while proportionality excels in copula-like regimes.
+\begin{table}[!t]
+\caption{Network topology on real microbiome datasets}\label{tab:real}
+\centering
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lrrrrrr@{}}
+\toprule
+\textbf{Method} & \textbf{Edges} & \textbf{Dens.} & \textbf{MaxCC} & \textbf{nComp} & $Q$ & \textbf{Time} \\
+\midrule
+\multicolumn{7}{l}{\textit{Enterotype ($N{=}280$, $P{=}550$, max 150{,}975 edges)}} \\
+\textbf{AdaCoNet}    & 5{,}917  & 0.05 & 181 & 179 & $\mathbf{0.510}$ & 0.44s \\
+Spearman CLR         & 7{,}548  & 0.05 & 210 & 255 & 0.498            & 0.02s \\
+Proportionality      & 7{,}548  & 0.05 & 215 & 319 & 0.264            & $<$0.01s \\
+SparCC               & 12{,}797 & 0.08 & 337 & 214 & 0.090            & 120s \\
+SPIEC-EASI$^\dagger$ & 150{,}975 & 1.00 & 550 & 1 & $\approx$0       & 19.8s \\
+Glasso$^\dagger$     & 150{,}975 & 1.00 & 550 & 1 & $\approx$0       & 91.7s \\
+\midrule
+\multicolumn{7}{l}{\textit{MovingPictures ($N{=}1967$, $P{=}926$, max 428{,}275 edges)}} \\
+Proportionality      & 21{,}413 & 0.05 & 260 & 441 & $\mathbf{0.438}$ & 0.01s \\
+SPIEC-EASI           & 21{,}413 & 0.05 & 925 & 2   & 0.415            & 161s \\
+SparCC               & 21{,}413 & 0.05 & 369 & 338 & 0.382            & 180s \\
+\textbf{AdaCoNet}    & 21{,}413 & 0.05 & 346 & 482 & 0.163            & 3.12s \\
+Spearman CLR         & 21{,}413 & 0.05 & 234 & 589 & 0.077            & 0.11s \\
+Glasso$^\dagger$     & 428{,}275 & 1.00 & 926 & 1 & $\approx$0       & 186s \\
+\botrule
+\end{tabular}
+\begin{tablenotes}
+\small
+$Q$: modularity; MaxCC: largest connected component; nComp: number of components. $^\dagger$ Degenerate: returned complete graph (regularization selection failure). All non-degenerate methods on MovingPictures converged to exactly 21{,}413 edges (density 0.05), but edge structure differs substantially.
+\end{tablenotes}
+\end{table}
+
+We applied all six methods to two real human microbiome datasets: the Enterotype dataset ($N{=}280$, $P{=}550$) and the MovingPictures cohort ($N{=}1967$, $P{=}926$).
+
+On Enterotype, AdaCoNet produced the highest modularity ($Q{=}0.510$, 5917 edges, 0.44\,s), indicating the strongest community structure among all methods. Spearman CLR was a close second ($Q{=}0.498$). SparCC generated a denser graph (12{,}797 edges, 8.5\% density) with poor modularity (0.090). Both Graphical Lasso and SPIEC-EASI returned degenerate complete graphs, indicating regularization selection failure on this dataset.
+
+On MovingPictures, all non-degenerate methods converged to the same edge count (21{,}413, density 5\%) through StARS stability selection, but edge structure differed substantially. Proportionality achieved the highest modularity (0.438) and was the fastest (0.014\,s). SPIEC-EASI ($Q{=}0.415$) formed a near-single giant component (925 of 926 nodes), suggesting a hub-dominated topology. AdaCoNet ($Q{=}0.163$) and Spearman CLR ($Q{=}0.077$) produced more fragmented networks. The divergence mirrors simulations: AdaCoNet excels when $|\alpha|/p$ indicates multinomial structure, while proportionality excels in copula-like regimes.
 
 
 %% ================================================================
@@ -247,11 +283,13 @@ On the Enterotype dataset ($N{=}280$, $P{=}550$), AdaCoNet produced the highest 
 
 AdaCoNet's model-based adaptive weighting represents a principled approach to ensemble method selection: rather than tuning weights against benchmark labels, the dual diagnostic combining the DM sufficient statistic $|\alpha|/p$ and zero fraction $f_0$ provides an intrinsic characterization of the data's generative regime. The ablation study (Table~\ref{tab:ablation}) quantitatively confirms the value of this approach: on SparseDOSSA2, the fixed 4-layer ensemble loses 0.036 AUROC compared to the adaptive 3-layer version, directly demonstrating that excluding uninformative layers matters. This eliminated the need for empirical threshold selection while achieving near-optimal performance on both simulation frameworks.
 
+A sensitivity analysis sweeping $c_{\text{ref}}$ from 0.01 to 0.15 confirms that the default value $c_{\text{ref}} = 0.05$ sits at a natural transition point. On v4 data ($N{=}500, P{=}500$), seeds with low zero fraction ($f_0 < 0.5$) retain Spearman for $c_{\text{ref}} \leq 0.05$ (AUROC $\approx 0.80$) and lose it at $c_{\text{ref}} \geq 0.07$ (AUROC drops to $\approx 0.74$), a gap of $\sim$0.06 AUROC directly attributable to the inclusion of an informative Spearman layer. On SparseDOSSA2 ($|\alpha|/p = 0.066$, $f_0 = 0.66$), the zero-fraction guard ($f_0 > 0.5$) blocks Spearman inclusion for all tested $c_{\text{ref}}$ values, maintaining AUROC at 0.72 regardless---demonstrating that the two diagnostics are complementary: the $|\alpha|/p$ criterion captures model-fit quality while $f_0$ guards against CLR degradation under extreme sparsity.
+
 The cross-simulator comparison (Fig.~\ref{fig:crosssim}) reveals a fundamental inversion: methods excelling on direct-covariance data (AdaCoNet, Spearman CLR) fail on Gaussian copula data, and vice versa. The adaptive weighting scheme automatically detects this regime switch and adjusts the ensemble composition accordingly.
 
 Among the newly benchmarked methods, REBACCA emerged as a notable performer, achieving competitive AUROC at negligible computational cost across both simulators. Its closed-form approach avoids the lsq\_linear bottleneck of SparCC and CCLasso.
 
-Limitations include: (i) the copula layer captures only linear associations in normal-score space; (ii) the reference values ($c_{\text{ref}} = 0.05$, $f_0 = 0.5$) derive from DM and CLR literature rather than being optimized for this specific application; (iii) the ablation reveals that equal-weight averaging can dilute strong single-layer signals, suggesting future work on data-driven weight optimization; (iv) StARS remains overly aggressive on SparseDOSSA2 data. Future directions include nonlinear extensions through distance correlation and cross-validated weight learning.
+Limitations include: (i) the copula layer captures only linear associations in normal-score space; (ii) the reference values ($c_{\text{ref}} = 0.05$, $f_0 = 0.5$) derive from DM and CLR literature rather than being optimized for this specific application; (iii) the ablation reveals that equal-weight averaging can dilute strong single-layer signals, suggesting future work on data-driven weight optimization. Future directions include nonlinear extensions through distance correlation and cross-validated weight learning.
 
 
 %% ================================================================
