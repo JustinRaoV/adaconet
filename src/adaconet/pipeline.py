@@ -60,7 +60,8 @@ class AdaCoNetPipeline:
     Parameters
     ----------
     n_folds : int, default 3
-        Cross-validation folds for ensemble weight learning.
+        Reserved for future cross-validation weight tuning (currently unused;
+        theory-driven weights from Theorem 3 are applied directly).
     min_prevalence : float, default 0.05
         Minimum prevalence fraction for taxon filtering.
     tau_zero : float, default 0.05
