@@ -42,6 +42,9 @@ source .venv/bin/activate
 
 # Install in development mode
 pip install -e ".[dev]"
+
+# Install with benchmark dependencies (for running benchmarks)
+pip install -e ".[benchmarks]"
 ```
 
 ## Quick Start
@@ -93,10 +96,6 @@ adaconet/
 │   ├── dm_foundation.py    # Dirichlet-Multinomial model fitting
 │   ├── ensemble.py         # Ensemble combination + StARS
 │   └── utils.py            # CLR transforms, normalization, filtering
-├── benchmarks/             # Benchmark framework
-│   ├── simulator.py        # MicrobialNetworkSimulator
-│   ├── metrics.py          # NetworkMetrics (AUROC, AUPRC, F1, topology)
-│   └── runner.py           # BenchmarkRunner
 ├── run_benchmarks.py       # 9-method benchmark entry point
 ├── run_sparsedossa2_benchmark.R  # SparseDOSSA2 data generation
 ├── run_sparsedossa2_benchmark.py # SparseDOSSA2 evaluation
@@ -104,13 +103,19 @@ adaconet/
 │   ├── paper_short.tex     # Short paper (OUP template, 4 pages)
 │   ├── paper_short.pdf     # Compiled paper
 │   └── figures/            # Publication figures
+├── results/                # Benchmark results JSON
 └── pyproject.toml          # Project configuration
 ```
 
 ## Dependencies
 
+**Core** (installed by default):
+
 - numpy ≥ 1.24
 - scipy ≥ 1.10
+
+**Benchmarks** (installed via `pip install -e ".[benchmarks]"`):
+
 - scikit-learn ≥ 1.3
 - pandas ≥ 2.0
 - networkx ≥ 3.0

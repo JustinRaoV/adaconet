@@ -7,7 +7,7 @@ computes evaluation metrics, and produces publication-quality figures.
 Usage
 -----
     python run_benchmarks.py --n-repeats 3 --output-dir results/
-    python run_benchmarks.py --methods adaconet spiecasi glasso --skip-vae
+    python run_benchmarks.py --methods adaconet spiecasi glasso
 """
 from __future__ import annotations
 
@@ -868,15 +868,13 @@ def _run_fastSpar(
     return np.abs(corr_final)
 
 
-def _run_adaconet(counts: np.ndarray, skip_vae: bool = False, **_: Any) -> np.ndarray:
+def _run_adaconet(counts: np.ndarray, **_: Any) -> np.ndarray:
     """AdaCoNet full pipeline inference."""
     try:
         sys.path.insert(0, os.path.join(os.path.dirname(__file__), "src"))
         from adaconet import AdaCoNetPipeline
 
         pipe = AdaCoNetPipeline(
-            epochs=50 if not skip_vae else 5,
-            n_permutations=50,
             n_folds=3,
             n_subsamples_stars=10,
             verbose=False,
@@ -910,12 +908,11 @@ METHOD_REGISTRY: Dict[str, Callable[..., np.ndarray]] = {
 # ---------------------------------------------------------------------------
 
 DATASET_CONFIGS: List[Tuple[int, int]] = [
-    (100, 500),
+    (200, 50),
+    (500, 200),
     (500, 500),
-    (500, 1000),
+    (1000, 500),
     (1000, 1000),
-    (1000, 2000),
-    (5000, 3000),
 ]
 
 
@@ -941,7 +938,6 @@ def run_benchmarks(
     methods: List[str],
     n_repeats: int = 3,
     output_dir: str = "results",
-    skip_vae: bool = False,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """Execute the full benchmark pipeline.
 
@@ -980,7 +976,6 @@ def run_benchmarks(
                     pred_scores, wall_time, peak_mem = _measure_resources(
                         METHOD_REGISTRY[method_name],
                         counts,
-                        skip_vae=skip_vae,
                     )
                     metrics = compute_metrics(true_adj, pred_scores)
                     _log(
@@ -1038,35 +1033,38 @@ def _generate_figures(
     true_adj: np.ndarray,
     output_dir: str,
 ) -> None:
-    """Generate and save all benchmark visualisations."""
+    """Generate and save all benchmark visualisations.
+
+    Note: Publication-quality figures are generated inline in the
+    benchmark run (see docs/figures/gen_fig*.py).  This function
+    produces quick diagnostic plots for ad-hoc benchmark runs.
+    """
     import matplotlib
     matplotlib.use("Agg")  # Non-interactive backend
-
-    from visualization.plot_performance import plot_metric_comparison, plot_scaling_results
+    import matplotlib.pyplot as plt
 
     fig_dir = os.path.join(output_dir, "figures")
+    os.makedirs(fig_dir, exist_ok=True)
 
-    # Scaling plots
-    if not perf_df.empty:
-        _log("Generating scaling plots ...")
-        try:
-            plot_scaling_results(perf_df, save_path=os.path.join(fig_dir, "scaling.pdf"))
-            _log("  Saved scaling.pdf")
-        except Exception as exc:
-            _log(f"  [WARN] scaling plot failed: {exc}")
+    if metric_df.empty:
+        _log("No metrics to plot.")
+        return
 
-    # Metric comparison bar charts
-    for metric_name in ["f1", "auprc", "auroc"]:
-        if metric_name in metric_df.columns and not metric_df.empty:
-            _log(f"Generating {metric_name} comparison chart ...")
-            try:
-                plot_metric_comparison(
-                    metric_df, metric=metric_name,
-                    save_path=os.path.join(fig_dir, f"comparison_{metric_name}.pdf"),
-                )
-                _log(f"  Saved comparison_{metric_name}.pdf")
-            except Exception as exc:
-                _log(f"  [WARN] {metric_name} chart failed: {exc}")
+    # Quick AUROC bar chart per config
+    _log("Generating quick AUROC comparison chart ...")
+    configs = metric_df.groupby(["n_samples", "n_taxa"]).groups
+    for (n_s, n_t), idx in configs.items():
+        sub = metric_df.loc[idx]
+        means = sub.groupby("method")["auroc"].mean().sort_values(ascending=True)
+        fig, ax = plt.subplots(figsize=(8, 4))
+        means.plot.barh(ax=ax)
+        ax.set_title(f"AUROC — N={n_s}, P={n_t}")
+        ax.set_xlim(0, 1)
+        fig.tight_layout()
+        path = os.path.join(fig_dir, f"auroc_N{n_s}_P{n_t}.pdf")
+        fig.savefig(path)
+        plt.close(fig)
+        _log(f"  Saved {path}")
 
 
 # ---------------------------------------------------------------------------
@@ -1112,10 +1110,6 @@ def main() -> None:
         "--output-dir", type=str, default="results",
         help="Directory for output CSVs and figures (default: results/).",
     )
-    parser.add_argument(
-        "--skip-vae", action="store_true",
-        help="Disable the VAE component of AdaCoNet for ablation testing.",
-    )
     args = parser.parse_args()
 
     _log(f"AdaCoNet Benchmarks — {args.n_repeats} repeats, methods={args.methods}")
@@ -1129,7 +1123,6 @@ def main() -> None:
         methods=args.methods,
         n_repeats=args.n_repeats,
         output_dir=args.output_dir,
-        skip_vae=args.skip_vae,
     )
 
     _log("Benchmarks complete.")
