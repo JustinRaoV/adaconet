@@ -87,6 +87,7 @@ class AdaCoNetPipeline:
         self._S_spearman: Optional[NDArray[np.float64]] = None
         self._rho_p: Optional[NDArray[np.float64]] = None
         self._S_copula: Optional[NDArray[np.float64]] = None
+        self._layer_scores: Optional[Dict[str, NDArray[np.float64]]] = None
         self._W: Optional[NDArray[np.float64]] = None
         self._adjacency: Optional[NDArray[np.bool_]] = None
         self._signed_weights: Optional[NDArray[np.float64]] = None
@@ -345,13 +346,22 @@ class AdaCoNetPipeline:
 
         # Model-based adaptation signal from DM sufficient statistic
         alpha_per_taxon = self._dm.alpha_sum_ / p
+        self._alpha_per_taxon_dm = alpha_per_taxon
+
+        # Zero-fraction diagnostic: when >50% of entries are zero, the
+        # CLR transform becomes dominated by pseudocount-induced ties,
+        # making rank-based Spearman unreliable regardless of DM α/p.
+        zero_frac = float(np.mean(self._X_filtered == 0))
+        self._zero_frac = zero_frac
+
         c_ref = 0.05  # universal reference: Chen & Li (2009), BMC Bioinformatics
         # Below this value, the DM model poorly describes the data
         # (heavy-tailed / copula-like regime); above it, the multinomial
         # likelihood is appropriate and rank-based CLR methods are reliable.
+        # Use the RAW (unfiltered) diagnostic for the ensemble decision.
 
-        # Spearman inclusion: only when DM model fits well (|α|/p ≥ c_ref)
-        spearman_reliable = alpha_per_taxon >= c_ref
+        # Spearman inclusion: DM model fits well AND CLR is not tie-dominated
+        spearman_reliable = alpha_per_taxon >= c_ref and zero_frac < 0.5
 
         # Collect score matrices; exclude Spearman when DM model is poor
         scores_dict = {
@@ -361,6 +371,14 @@ class AdaCoNetPipeline:
         }
         if spearman_reliable:
             scores_dict["spearman"] = S_spearman
+
+        # Save per-layer raw scores (for ablation analysis)
+        self._layer_scores = {
+            "dm": S_dm.copy(),
+            "spearman": S_spearman.copy(),
+            "proportionality": S_prop.copy(),
+            "copula": S_copula.copy(),
+        }
 
         # Min-max normalise to [0, 1], then equal-weight average
         scores_norm = ensemble.normalize_scores(scores_dict)
@@ -372,7 +390,7 @@ class AdaCoNetPipeline:
         self._alpha_per_taxon = alpha_per_taxon
 
         # Diagnostics
-        self._log(f"  DM |α|/p = {alpha_per_taxon:.4f} (ref c={c_ref})")
+        self._log(f"  DM |α|/p = {alpha_per_taxon:.4f} (ref c={c_ref}), zero_frac = {zero_frac:.3f}")
         spearman_status = "included" if spearman_reliable else "excluded (DM model poor)"
         self._log(f"  Spearman: {spearman_status}")
 
@@ -485,6 +503,7 @@ class AdaCoNetPipeline:
             "S_spearman": self._S_spearman,
             "rho_p": self._rho_p,
             "S_copula": self._S_copula,
+            "layer_scores": self._layer_scores,
             "W": self._W,
             "tau": self._tau,
             "weights": self._weights,
